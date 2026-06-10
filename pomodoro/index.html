@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pomodoro</title>
+  <style>
+    :root {
+      --work-color: #e74c3c;
+      --break-color: #27ae60;
+      --bg: #1a1a2e;
+      --surface: #16213e;
+      --text: #eaeaea;
+      --muted: #8892a4;
+      --radius: 16px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 28px;
+      padding: 24px;
+    }
+
+    h1 { font-size: 1.6rem; letter-spacing: 0.08em; color: var(--muted); font-weight: 400; }
+
+    /* ── Mode tabs ── */
+    .tabs {
+      display: flex;
+      gap: 8px;
+      background: var(--surface);
+      padding: 6px;
+      border-radius: 50px;
+    }
+    .tab {
+      padding: 6px 20px;
+      border: none;
+      border-radius: 50px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+    .tab.active {
+      background: var(--accent, var(--work-color));
+      color: #fff;
+      font-weight: 600;
+    }
+
+    /* ── Ring timer ── */
+    .ring-wrap { position: relative; width: 240px; height: 240px; }
+
+    .ring-wrap svg { transform: rotate(-90deg); }
+
+    #ring-bg { stroke: #ffffff12; }
+    #ring-fg {
+      stroke: var(--accent, var(--work-color));
+      stroke-linecap: round;
+      transition: stroke-dashoffset 1s linear, stroke 0.4s;
+    }
+
+    .time-label {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+    #time-display {
+      font-size: 3.4rem;
+      font-weight: 700;
+      letter-spacing: -2px;
+      font-variant-numeric: tabular-nums;
+    }
+    #mode-label {
+      font-size: 0.85rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    /* ── Buttons ── */
+    .controls { display: flex; gap: 12px; }
+
+    .btn {
+      padding: 12px 32px;
+      border: none;
+      border-radius: 50px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.1s, opacity 0.2s;
+    }
+    .btn:active { transform: scale(0.96); }
+
+    #btn-toggle {
+      background: var(--accent, var(--work-color));
+      color: #fff;
+      min-width: 120px;
+    }
+    #btn-reset {
+      background: var(--surface);
+      color: var(--muted);
+    }
+
+    /* ── Settings ── */
+    .settings {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .setting {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .setting label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+    .setting input[type=number] {
+      width: 64px;
+      padding: 6px 8px;
+      background: var(--surface);
+      border: 1px solid #ffffff18;
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 1rem;
+      text-align: center;
+    }
+    .setting input[type=number]:focus { outline: 2px solid var(--accent, var(--work-color)); border-color: transparent; }
+
+    /* ── Session log ── */
+    .log-wrap {
+      width: 100%;
+      max-width: 400px;
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+    }
+    .log-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .log-header span { font-size: 0.85rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+    #clear-log {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 0.75rem;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    #clear-log:hover { color: var(--text); background: #ffffff10; }
+
+    #log-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 160px;
+      overflow-y: auto;
+    }
+    #log-list li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+      padding: 4px 0;
+      border-bottom: 1px solid #ffffff08;
+    }
+    #log-list li:last-child { border-bottom: none; }
+    .log-type { font-weight: 600; }
+    .log-type.work { color: var(--work-color); }
+    .log-type.brk  { color: var(--break-color); }
+    .log-time { color: var(--muted); }
+
+    .empty-log { color: var(--muted); font-size: 0.85rem; text-align: center; padding: 12px 0; }
+
+    /* ── Pomodoro count ── */
+    .tomatoes {
+      display: flex;
+      gap: 6px;
+      font-size: 1.4rem;
+    }
+    .tomato { opacity: 0.2; transition: opacity 0.3s; }
+    .tomato.done { opacity: 1; }
+  </style>
+</head>
+<body>
+
+<h1>🍅 Pomodoro</h1>
+
+<div class="tabs">
+  <button class="tab active" data-mode="work">Trabajo</button>
+  <button class="tab"        data-mode="short">Descanso corto</button>
+  <button class="tab"        data-mode="long">Descanso largo</button>
+</div>
+
+<div class="ring-wrap">
+  <svg width="240" height="240" viewBox="0 0 240 240">
+    <circle id="ring-bg" cx="120" cy="120" r="108" fill="none" stroke-width="14"/>
+    <circle id="ring-fg" cx="120" cy="120" r="108" fill="none" stroke-width="14"
+            stroke-dasharray="678.58" stroke-dashoffset="0"/>
+  </svg>
+  <div class="time-label">
+    <div id="time-display">25:00</div>
+    <div id="mode-label">Trabajo</div>
+  </div>
+</div>
+
+<div class="controls">
+  <button class="btn" id="btn-toggle">Iniciar</button>
+  <button class="btn" id="btn-reset">Reiniciar</button>
+</div>
+
+<div class="settings">
+  <div class="setting">
+    <label>Trabajo (min)</label>
+    <input type="number" id="cfg-work"  min="1" max="99" value="25" />
+  </div>
+  <div class="setting">
+    <label>Descanso corto</label>
+    <input type="number" id="cfg-short" min="1" max="99" value="5" />
+  </div>
+  <div class="setting">
+    <label>Descanso largo</label>
+    <input type="number" id="cfg-long"  min="1" max="99" value="15" />
+  </div>
+</div>
+
+<div class="tomatoes" id="tomatoes">
+  <span class="tomato" id="t1">🍅</span>
+  <span class="tomato" id="t2">🍅</span>
+  <span class="tomato" id="t3">🍅</span>
+  <span class="tomato" id="t4">🍅</span>
+</div>
+
+<div class="log-wrap">
+  <div class="log-header">
+    <span>Sesiones de hoy</span>
+    <button id="clear-log">Limpiar</button>
+  </div>
+  <ul id="log-list"></ul>
+</div>
+
+<script>
+  // ── Constants ──────────────────────────────────────────────────────────────
+  const CIRCUMFERENCE = 2 * Math.PI * 108; // 678.58
+  const MODES = {
+    work:  { label: 'Trabajo',         color: 'var(--work-color)'  },
+    short: { label: 'Descanso corto',  color: 'var(--break-color)' },
+    long:  { label: 'Descanso largo',  color: 'var(--break-color)' },
+  };
+  const TODAY_KEY = 'pomo_log_' + new Date().toDateString();
+
+  // ── State ──────────────────────────────────────────────────────────────────
+  let mode       = 'work';
+  let running    = false;
+  let totalSecs  = 25 * 60;
+  let remaining  = totalSecs;
+  let ticker     = null;
+  let pomodoros  = 0;
+
+  // ── DOM refs ───────────────────────────────────────────────────────────────
+  const ringFg      = document.getElementById('ring-fg');
+  const timeDisplay = document.getElementById('time-display');
+  const modeLabel   = document.getElementById('mode-label');
+  const btnToggle   = document.getElementById('btn-toggle');
+  const btnReset    = document.getElementById('btn-reset');
+  const logList     = document.getElementById('log-list');
+  const tabs        = document.querySelectorAll('.tab');
+  const tomatoEls   = document.querySelectorAll('.tomato');
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function fmt(s) {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  }
+
+  function getMinutes(m) {
+    const map = { work: 'cfg-work', short: 'cfg-short', long: 'cfg-long' };
+    return parseInt(document.getElementById(map[m]).value, 10) || 1;
+  }
+
+  function setAccent(color) {
+    document.documentElement.style.setProperty('--accent', color);
+  }
+
+  function updateRing() {
+    const pct = remaining / totalSecs;
+    ringFg.style.strokeDashoffset = CIRCUMFERENCE * (1 - pct);
+  }
+
+  function updateTomatoes() {
+    tomatoEls.forEach((el, i) => {
+      el.classList.toggle('done', i < pomodoros % 4);
+    });
+  }
+
+  function beep() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      [0, 180, 360].forEach(delay => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.value = 880;
+        gain.gain.setValueAtTime(0.4, ctx.currentTime + delay / 1000);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay / 1000 + 0.3);
+        osc.start(ctx.currentTime + delay / 1000);
+        osc.stop(ctx.currentTime + delay / 1000 + 0.35);
+      });
+    } catch (_) {}
+  }
+
+  function notify(text) {
+    if (Notification.permission === 'granted') {
+      new Notification('🍅 Pomodoro', { body: text, icon: '' });
+    }
+  }
+
+  // ── Log ───────────────────────────────────────────────────────────────────
+  function loadLog() {
+    try { return JSON.parse(localStorage.getItem(TODAY_KEY)) || []; }
+    catch { return []; }
+  }
+
+  function saveLog(entries) {
+    localStorage.setItem(TODAY_KEY, JSON.stringify(entries));
+  }
+
+  function addLogEntry(type, minutes) {
+    const entries = loadLog();
+    const now = new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
+    entries.unshift({ type, minutes, time: now });
+    saveLog(entries);
+    renderLog();
+  }
+
+  function renderLog() {
+    const entries = loadLog();
+    if (!entries.length) {
+      logList.innerHTML = '<li class="empty-log">Aún no hay sesiones completadas.</li>';
+      return;
+    }
+    logList.innerHTML = entries.map(e => {
+      const cls   = e.type === 'work' ? 'work' : 'brk';
+      const label = e.type === 'work' ? `🍅 Trabajo ${e.minutes} min` : `☕ Descanso ${e.minutes} min`;
+      return `<li>
+        <span class="log-type ${cls}">${label}</span>
+        <span class="log-time">${e.time}</span>
+      </li>`;
+    }).join('');
+  }
+
+  // ── Core logic ─────────────────────────────────────────────────────────────
+  function switchMode(m) {
+    stop();
+    mode = m;
+    tabs.forEach(t => t.classList.toggle('active', t.dataset.mode === m));
+    setAccent(MODES[m].color);
+    modeLabel.textContent = MODES[m].label;
+    totalSecs = getMinutes(m) * 60;
+    remaining = totalSecs;
+    timeDisplay.textContent = fmt(remaining);
+    updateRing();
+    btnToggle.textContent = 'Iniciar';
+  }
+
+  function tick() {
+    if (remaining <= 0) {
+      onComplete();
+      return;
+    }
+    remaining--;
+    timeDisplay.textContent = fmt(remaining);
+    updateRing();
+  }
+
+  function onComplete() {
+    stop();
+    beep();
+    const mins = getMinutes(mode);
+    const type = mode;
+    addLogEntry(type, mins);
+    if (mode === 'work') {
+      pomodoros++;
+      updateTomatoes();
+      notify(`¡Tiempo! Completaste ${mins} min de trabajo. Toma un descanso.`);
+    } else {
+      notify('¡Descanso terminado! Hora de trabajar.');
+    }
+  }
+
+  function start() {
+    if (remaining <= 0) remaining = totalSecs;
+    running = true;
+    btnToggle.textContent = 'Pausar';
+    ticker = setInterval(tick, 1000);
+  }
+
+  function stop() {
+    running = false;
+    clearInterval(ticker);
+    ticker = null;
+    btnToggle.textContent = 'Continuar';
+  }
+
+  function reset() {
+    stop();
+    totalSecs = getMinutes(mode) * 60;
+    remaining = totalSecs;
+    timeDisplay.textContent = fmt(remaining);
+    updateRing();
+    btnToggle.textContent = 'Iniciar';
+  }
+
+  // ── Events ─────────────────────────────────────────────────────────────────
+  btnToggle.addEventListener('click', () => {
+    if (running) stop(); else start();
+  });
+
+  btnReset.addEventListener('click', reset);
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => switchMode(tab.dataset.mode));
+  });
+
+  ['cfg-work','cfg-short','cfg-long'].forEach(id => {
+    document.getElementById(id).addEventListener('change', () => {
+      // only reset if we're on that mode and not running
+      const modeMap = { 'cfg-work':'work','cfg-short':'short','cfg-long':'long' };
+      if (modeMap[id] === mode && !running) reset();
+    });
+  });
+
+  document.getElementById('clear-log').addEventListener('click', () => {
+    localStorage.removeItem(TODAY_KEY);
+    renderLog();
+  });
+
+  // ── Init ───────────────────────────────────────────────────────────────────
+  if (Notification.permission === 'default') Notification.requestPermission();
+  setAccent(MODES.work.color);
+  ringFg.style.strokeDasharray = CIRCUMFERENCE;
+  updateRing();
+  renderLog();
+</script>
+</body>
+</html>

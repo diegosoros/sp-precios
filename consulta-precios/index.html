@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Consulta de Precios SP</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; color: #1a1a2e; min-height: 100vh; }
+
+header {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  color: white; padding: 18px 32px;
+  display: flex; align-items: center; gap: 16px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.3); flex-wrap: wrap;
+}
+header h1 { font-size: 1.4rem; font-weight: 700; }
+.header-right { margin-left: auto; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.header-right span { font-size: 0.8rem; opacity: 0.6; }
+.btn-header {
+  padding: 7px 14px; border-radius: 8px; border: none; cursor: pointer;
+  font-size: 0.8rem; font-weight: 700; transition: background 0.15s;
+}
+.btn-save { background: #e8b400; color: #1a1a2e; }
+.btn-save:hover { background: #d4a500; }
+.btn-load { background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3); }
+.btn-load:hover { background: rgba(255,255,255,0.25); }
+
+.container { max-width: 960px; margin: 0 auto; padding: 32px 16px; }
+
+.search-box {
+  background: white; border-radius: 16px; padding: 28px 32px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin-bottom: 24px;
+}
+.search-box h2 { font-size: 1rem; color: #555; margin-bottom: 16px; font-weight: 600; }
+.search-row { display: flex; gap: 12px; }
+#searchInput {
+  flex: 1; padding: 14px 20px; border: 2px solid #e0e0e0; border-radius: 10px;
+  font-size: 1.1rem; font-family: 'Courier New', monospace; letter-spacing: 1px;
+  text-transform: uppercase; outline: none; transition: border-color 0.2s;
+}
+#searchInput:focus { border-color: #e8b400; }
+#searchBtn {
+  padding: 14px 28px; background: #e8b400; border: none; border-radius: 10px;
+  font-size: 1rem; font-weight: 700; cursor: pointer; color: #1a1a2e; transition: background 0.2s;
+}
+#searchBtn:hover { background: #d4a500; }
+#result { margin-top: 20px; }
+
+.result-card {
+  background: white; border-radius: 16px; padding: 28px 32px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08); animation: fadeIn 0.2s ease;
+}
+@keyframes fadeIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
+.result-code { font-size: 0.75rem; color: #888; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; }
+.result-desc { font-size: 1.1rem; font-weight: 700; color: #1a1a2e; margin: 6px 0 20px; line-height: 1.4; }
+.prices-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.price-chip { border-radius: 12px; padding: 16px 20px; text-align: center; border: 2px solid; }
+.price-chip.publico  { background: #fffbeb; border-color: #fde68a; }
+.price-chip.mayoreo  { background: #eff6ff; border-color: #bfdbfe; }
+.price-chip.mayoreoB { background: #f0fdf4; border-color: #bbf7d0; }
+.price-chip.mayoreoA { background: #fdf4ff; border-color: #e9d5ff; }
+.price-chip label { display: block; font-size: 0.7rem; font-weight: 700; color: #888; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+.price-chip .amount { font-size: 1.5rem; font-weight: 800; color: #1a1a2e; }
+.result-sources { margin-top: 16px; font-size: 0.75rem; color: #aaa; }
+
+.not-found {
+  background: white; border-radius: 16px; padding: 24px 32px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08); text-align: center; color: #888;
+}
+.not-found strong { display: block; font-size: 1rem; color: #555; margin-bottom: 4px; }
+
+.stats-bar { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+.stat-chip {
+  background: white; border-radius: 10px; padding: 10px 18px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06); font-size: 0.85rem; color: #555;
+}
+.stat-chip strong { color: #1a1a2e; font-size: 1rem; }
+
+.import-box {
+  background: white; border-radius: 16px; padding: 28px 32px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin-bottom: 24px;
+}
+.import-box h2 { font-size: 1rem; color: #555; margin-bottom: 16px; font-weight: 600; }
+
+.drop-zone {
+  border: 3px dashed #e0e0e0; border-radius: 12px; padding: 36px 20px;
+  text-align: center; cursor: pointer; transition: all 0.2s; background: #fafafa;
+}
+.drop-zone:hover, .drop-zone.drag-over { border-color: #e8b400; background: #fffbeb; }
+.drop-zone p { color: #888; font-size: 0.95rem; margin-bottom: 6px; }
+.drop-zone .hint { font-size: 0.8rem; color: #bbb; }
+
+.progress-area { margin-top: 16px; }
+.progress-item {
+  display: flex; align-items: center; gap: 12px; padding: 10px 0;
+  border-bottom: 1px solid #f0f0f0; font-size: 0.85rem;
+}
+.progress-item:last-child { border-bottom: none; }
+.prog-name { flex: 1; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prog-status { font-weight: 700; font-size: 0.8rem; white-space: nowrap; }
+.prog-status.ok { color: #16a34a; }
+.prog-status.err { color: #dc2626; }
+.prog-status.loading { color: #d97706; }
+
+.lists-box {
+  background: white; border-radius: 16px; padding: 28px 32px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+}
+.lists-box h2 { font-size: 1rem; color: #555; margin-bottom: 16px; font-weight: 600; }
+.list-item {
+  display: flex; align-items: center; gap: 12px; padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0; font-size: 0.85rem;
+}
+.list-item:last-child { border-bottom: none; }
+.list-name { flex: 1; font-weight: 600; color: #333; }
+.list-meta { color: #888; font-size: 0.78rem; }
+.list-del {
+  background: none; border: 1px solid #fca5a5; color: #dc2626; border-radius: 6px;
+  padding: 4px 10px; cursor: pointer; font-size: 0.78rem; transition: background 0.15s;
+}
+.list-del:hover { background: #fee2e2; }
+.empty-lists { color: #bbb; font-size: 0.9rem; text-align: center; padding: 20px 0; }
+.btn-clear-all {
+  margin-top: 16px; padding: 8px 16px; background: none; border: 1px solid #fca5a5;
+  color: #dc2626; border-radius: 8px; cursor: pointer; font-size: 0.8rem; transition: background 0.15s;
+}
+.btn-clear-all:hover { background: #fee2e2; }
+
+.save-hint {
+  background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px;
+  padding: 10px 16px; font-size: 0.82rem; color: #92400e; margin-top: 16px; display: none;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#e8b400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+  </svg>
+  <h1>Consulta de Precios SP</h1>
+  <div class="header-right">
+    <span id="dbStatus">0 productos</span>
+    <button class="btn-header btn-load" id="btnLoadDB">📂 Cargar base</button>
+    <button class="btn-header btn-save" id="btnSaveDB">💾 Guardar base</button>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- SEARCH -->
+  <div class="search-box">
+    <h2>Buscar por código</h2>
+    <div class="search-row">
+      <input id="searchInput" type="text" placeholder="Ej: ACI730, RIN0721..." autocomplete="off" />
+      <button id="searchBtn">Buscar</button>
+    </div>
+    <div id="result"></div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-bar" id="statsBar"></div>
+
+  <!-- IMPORT -->
+  <div class="import-box">
+    <h2>Importar listas de precios (PDF)</h2>
+    <div class="drop-zone" id="dropZone">
+      <p>Arrastra uno o varios PDFs aquí</p>
+      <p class="hint">o haz clic para seleccionar archivos</p>
+    </div>
+    <input type="file" id="fileInput" accept=".pdf" multiple style="display:none" />
+    <div class="progress-area" id="progressArea"></div>
+    <div class="save-hint" id="saveHint">
+      ⚠️ <strong>Recuerda guardar tu base de datos</strong> con el botón "💾 Guardar base" para no perder los cambios al cerrar.
+    </div>
+  </div>
+
+  <!-- LISTS -->
+  <div class="lists-box">
+    <h2>Listas importadas</h2>
+    <div id="listContainer"></div>
+  </div>
+
+</div>
+
+<input type="file" id="loadDBInput" accept=".json" style="display:none" />
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// ─── Base de datos en memoria ────────────────────────────────────
+let DB = { productos: {}, listas: [] };
+
+function dbGet(key)      { return DB.productos[key.toUpperCase()] ?? null; }
+function dbGetAll()      { return Object.values(DB.productos); }
+function dbGetListas()   { return DB.listas; }
+
+function dbPutProducto(p) { DB.productos[p.codigo] = p; }
+
+function dbPutLista(l) {
+  const idx = DB.listas.findIndex(x => x.nombre === l.nombre);
+  if (idx >= 0) DB.listas[idx] = l; else DB.listas.push(l);
+}
+
+function dbDeleteLista(nombre) {
+  DB.listas = DB.listas.filter(l => l.nombre !== nombre);
+}
+
+function dbClearAll() { DB = { productos: {}, listas: [] }; }
+
+// ─── Guardar / Cargar JSON ───────────────────────────────────────
+function saveDB() {
+  const json = JSON.stringify(DB, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'sp_precios.json'; a.click();
+  URL.revokeObjectURL(url);
+  document.getElementById('saveHint').style.display = 'none';
+}
+
+function loadDBFromFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (data.productos && data.listas) {
+        DB = data;
+        refreshUI();
+        document.getElementById('dbStatus').textContent = Object.keys(DB.productos).length + ' productos';
+      } else {
+        alert('Archivo inválido. Usa un archivo sp_precios.json generado por esta app.');
+      }
+    } catch { alert('Error leyendo el archivo JSON.'); }
+  };
+  reader.readAsText(file);
+}
+
+// ─── PDF Parsing ─────────────────────────────────────────────────
+const MESES = { ENERO:0,FEBRERO:1,MARZO:2,ABRIL:3,MAYO:4,JUNIO:5,
+                JULIO:6,AGOSTO:7,SEPTIEMBRE:8,OCTUBRE:9,NOVIEMBRE:10,DICIEMBRE:11 };
+
+// Extrae fecha del texto completo de la primera página
+function extractDateFromText(text) {
+  const u = text.toUpperCase();
+  const mesKeys = Object.keys(MESES).join('|');
+  // "9 DE DICIEMBRE DEL 2025" o "9 DE DICIEMBRE 2025"
+  const m1 = u.match(new RegExp(`(\\d{1,2})\\s+DE\\s+(${mesKeys})\\s+(?:DEL?\\s+)?(\\d{4})`));
+  if (m1) return new Date(+m1[3], MESES[m1[2]], +m1[1]);
+  // "DICIEMBRE DEL 2025" o "ABRIL 2026"
+  const m2 = u.match(new RegExp(`(${mesKeys})\\s+(?:DEL?\\s+)?(\\d{4})`));
+  if (m2) return new Date(+m2[2], MESES[m2[1]], 1);
+  return null;
+}
+
+function detectPriceType(text) {
+  const h = text.toUpperCase().replace(/\s+/g, ' ');
+  if (h.includes('MAYOREO B')) return 'mayoreoB';
+  if (h.includes('MAYOREO A')) return 'mayoreoA';
+  if (h.includes('MAYOREO'))   return 'mayoreo';
+  if (h.includes('PUBLICO') || h.includes('PÚBLICO')) return 'publico';
+  return null;
+}
+
+function parsePrice(str) {
+  if (!str) return null;
+  const n = parseFloat(str.replace(/[$,\s]/g, ''));
+  return isNaN(n) ? null : n;
+}
+
+async function getPageItems(page) {
+  const tc = await page.getTextContent();
+  return tc.items
+    .map(it => ({ text: it.str.trim(), x: Math.round(it.transform[4]), y: Math.round(it.transform[5]), w: Math.round(it.width) }))
+    .filter(it => it.text.length > 0);
+}
+
+function groupByRows(items) {
+  const rows = [];
+  for (const it of items) {
+    const row = rows.find(r => Math.abs(r.y - it.y) <= 6);
+    if (row) row.items.push(it);
+    else rows.push({ y: it.y, items: [it] });
+  }
+  rows.sort((a, b) => b.y - a.y);
+  for (const r of rows) r.items.sort((a, b) => a.x - b.x);
+  return rows;
+}
+
+// Une "$" suelto con el número siguiente DENTRO de una fila ya ordenada por X
+function mergeAdjacentPricesInRow(rowItems) {
+  const out = [];
+  for (let i = 0; i < rowItems.length; i++) {
+    if (rowItems[i].text === '$' && i + 1 < rowItems.length
+        && /^[\d,]+(\.\d{1,2})?$/.test(rowItems[i+1].text)) {
+      out.push({ ...rowItems[i], text: '$' + rowItems[i+1].text, w: rowItems[i].w + rowItems[i+1].w });
+      i++;
+    } else {
+      out.push(rowItems[i]);
+    }
+  }
+  return out;
+}
+
+const SKIP_WORDS = new Set(['QTY','PRECIO','STOCK','IMAGEN','DESCRIPCION','CODIGO','PICTURE',
+  'DESCRIPTION','PUBLICO','PÚBLICO','MAYOREO','ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO',
+  'JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE','LED','ABS','KIT','SET',
+  'PAR','PLUG','PLAY','TIPO','PARA','CON','AEV','DEL','SP','CODE']);
+
+function looksLikeCode(s) {
+  const u = s.trim().toUpperCase();
+  if (!/^[A-Z]{2,}[A-Z0-9]*\d+[A-Z0-9]*$/i.test(u)) return false;
+  return !SKIP_WORDS.has(u);
+}
+
+function looksLikePrice(s) {
+  const t = s.trim();
+  if (/^\$\s*\d[\d,]*(\.\d{1,2})?$/.test(t)) return true;       // $1,999 o $1,999.00
+  if (/^\d{1,3}(,\d{3})+(\.\d{1,2})?$/.test(t)) return true;    // 1,999 o 45,099 (con separador de miles)
+  return false;
+}
+
+async function parsePDF(arrayBuffer) {
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const productos = [];
+  let fechaLista = null;
+
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const page    = await pdf.getPage(p);
+    const rawItems = await getPageItems(page);
+    const rows    = groupByRows(rawItems);
+    // Merge "$" + número dentro de cada fila ya ordenada por X
+    for (const row of rows) row.items = mergeAdjacentPricesInRow(row.items);
+
+    // Extraer fecha de la primera página
+    if (p === 1) {
+      const pageText = rawItems.map(it => it.text).join(' ');
+      fechaLista = extractDateFromText(pageText);
+    }
+
+    // Detectar columnas de precio desde encabezado
+    let priceColumns = [];
+    for (let i = 0; i < rows.length; i++) {
+      const full = rows[i].items.map(it => it.text).join(' ').toUpperCase();
+      if (full.includes('PRECIO') || full.includes('MAYOREO')) {
+        const candidates = [...rows[i].items, ...(rows[i+1]?.items || [])];
+        for (const it of candidates) {
+          const t = detectPriceType(it.text);
+          if (t && !priceColumns.find(pc => Math.abs(pc.x - it.x) < 20))
+            priceColumns.push({ x: it.x, type: t });
+        }
+        if (priceColumns.length > 0) break;
+      }
+    }
+
+    // Parsear filas de datos
+    for (const row of rows) {
+      let codeItem = null;
+      for (const it of row.items) {
+        if (looksLikeCode(it.text)) { codeItem = it; break; }
+      }
+      if (!codeItem) continue;
+
+      const codigo = codeItem.text.trim().toUpperCase();
+      if (codigo.length < 4) continue;
+
+      const priceXStart = priceColumns.length > 0
+        ? Math.min(...priceColumns.map(pc => pc.x)) - 60 : 99999;
+
+      const descripcion = row.items
+        .filter(it => it.x > codeItem.x + Math.max(codeItem.w, 10)
+                   && it.x < priceXStart
+                   && !looksLikePrice(it.text)
+                   && !/^\d+$/.test(it.text))
+        .map(it => it.text).join(' ').trim();
+
+      const precios = {};
+      const allPriceItems = row.items.filter(it => looksLikePrice(it.text));
+
+      if (priceColumns.length > 0 && allPriceItems.length > 0) {
+        // Asignar cada precio al encabezado más cercano
+        for (const priceItem of allPriceItems) {
+          let bestCol = null, bestDist = Infinity;
+          for (const col of priceColumns) {
+            const dist = Math.abs(priceItem.x - col.x);
+            if (dist < bestDist) { bestDist = dist; bestCol = col; }
+          }
+          if (bestCol && bestDist < 150) precios[bestCol.type] = parsePrice(priceItem.text);
+        }
+      }
+
+      // Fallback posicional: izquierda=público, derecha=mayoreo
+      if (Object.keys(precios).length === 0 && allPriceItems.length > 0) {
+        if (allPriceItems.length === 1) precios['mayoreo'] = parsePrice(allPriceItems[0].text);
+        else {
+          precios['publico'] = parsePrice(allPriceItems[0].text);
+          precios['mayoreo'] = parsePrice(allPriceItems[allPriceItems.length - 1].text);
+        }
+      }
+
+      if (Object.keys(precios).length === 0) continue;
+      productos.push({ codigo, descripcion, precios });
+    }
+  }
+
+  return { productos, fecha: fechaLista };
+}
+
+// ─── Merge por fecha más reciente ────────────────────────────────
+function mergeProductos(nuevos, nombreLista, fechaLista) {
+  const fechaTs = fechaLista ? fechaLista.getTime() : 0;
+  let agregados = 0, actualizados = 0;
+
+  for (const prod of nuevos) {
+    const existing = dbGet(prod.codigo);
+    if (!existing) {
+      // Guardar timestamp por tipo de precio para comparaciones futuras
+      const preciosFecha = {};
+      for (const tipo of Object.keys(prod.precios)) preciosFecha[tipo] = fechaTs;
+      dbPutProducto({ codigo: prod.codigo, descripcion: prod.descripcion,
+        precios: prod.precios, preciosFecha, fuentes: [nombreLista] });
+      agregados++;
+    } else {
+      const merged = { ...existing.precios };
+      const mergedFecha = { ...(existing.preciosFecha || {}) };
+      for (const [tipo, val] of Object.entries(prod.precios)) {
+        if (val == null) continue;
+        const existingTs = mergedFecha[tipo] || 0;
+        // Actualizar si la lista nueva es más reciente (o igual fecha con precio diferente)
+        if (fechaTs >= existingTs) {
+          merged[tipo] = val;
+          mergedFecha[tipo] = fechaTs;
+        }
+      }
+      const fuentes = [...new Set([...(existing.fuentes || []), nombreLista])];
+      dbPutProducto({ ...existing, precios: merged, preciosFecha: mergedFecha, fuentes });
+      actualizados++;
+    }
+  }
+  return { agregados, actualizados };
+}
+
+// ─── UI ──────────────────────────────────────────────────────────
+const searchInput   = document.getElementById('searchInput');
+const searchBtn     = document.getElementById('searchBtn');
+const resultDiv     = document.getElementById('result');
+const dropZone      = document.getElementById('dropZone');
+const fileInput     = document.getElementById('fileInput');
+const progressArea  = document.getElementById('progressArea');
+const statsBar      = document.getElementById('statsBar');
+const listContainer = document.getElementById('listContainer');
+const saveHint      = document.getElementById('saveHint');
+const dbStatus      = document.getElementById('dbStatus');
+
+const PRICE_LABELS = {
+  publico:  { label: 'Público',   cls: 'publico' },
+  mayoreo:  { label: 'Mayoreo',   cls: 'mayoreo' },
+  mayoreoA: { label: 'Mayoreo A', cls: 'mayoreoA' },
+  mayoreoB: { label: 'Mayoreo B', cls: 'mayoreoB' },
+};
+
+function formatMXN(n) {
+  return n == null ? '—' : '$' + n.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function doSearch() {
+  const q = searchInput.value.trim().toUpperCase();
+  if (!q) return;
+  const prod = dbGet(q);
+  if (!prod) {
+    resultDiv.innerHTML = `<div class="not-found">
+      <strong>Código no encontrado: ${q}</strong>
+      Verifica el código o importa la lista que lo contiene.
+    </div>`;
+    return;
+  }
+  const chips = Object.entries(prod.precios)
+    .filter(([, v]) => v != null)
+    .map(([tipo, val]) => {
+      const info = PRICE_LABELS[tipo] || { label: tipo, cls: 'mayoreo' };
+      return `<div class="price-chip ${info.cls}">
+        <label>${info.label}</label>
+        <div class="amount">${formatMXN(val)}</div>
+      </div>`;
+    }).join('');
+  resultDiv.innerHTML = `<div class="result-card">
+    <div class="result-code">${prod.codigo}</div>
+    <div class="result-desc">${prod.descripcion || 'Sin descripción'}</div>
+    <div class="prices-grid">${chips}</div>
+    <div class="result-sources">Fuentes: ${(prod.fuentes || []).join(', ')}</div>
+  </div>`;
+}
+
+searchBtn.addEventListener('click', doSearch);
+searchInput.addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+
+// Drop / file select
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag-over');
+  processFiles([...e.dataTransfer.files].filter(f => f.name.toLowerCase().endsWith('.pdf')));
+});
+fileInput.addEventListener('change', () => { processFiles([...fileInput.files]); fileInput.value = ''; });
+
+function addProgressItem(name) {
+  const div = document.createElement('div');
+  div.className = 'progress-item';
+  div.innerHTML = `<span class="prog-name" title="${name}">${name}</span>
+    <span class="prog-status loading">Procesando...</span>`;
+  progressArea.appendChild(div);
+  return div.querySelector('.prog-status');
+}
+
+async function processFiles(files) {
+  if (!files.length) return;
+  progressArea.innerHTML = '';
+  for (const file of files) {
+    const statusEl = addProgressItem(file.name);
+    try {
+      const buf = await file.arrayBuffer();
+      const { productos, fecha } = await parsePDF(buf);
+      if (productos.length === 0) {
+        statusEl.textContent = 'Sin datos detectados';
+        statusEl.className = 'prog-status err';
+        continue;
+      }
+      const { agregados, actualizados } = mergeProductos(productos, file.name, fecha);
+      const fechaStr = fecha ? fecha.toLocaleDateString('es-MX') : 'fecha no detectada';
+      dbPutLista({ nombre: file.name, fecha: fechaStr, productos: productos.length, agregados, actualizados });
+      statusEl.textContent = `✓ ${productos.length} productos · ${fechaStr} (${agregados} nuevos, ${actualizados} actualizados)`;
+      statusEl.className = 'prog-status ok';
+    } catch (err) {
+      console.error(err);
+      statusEl.textContent = 'Error: ' + err.message;
+      statusEl.className = 'prog-status err';
+    }
+  }
+  saveHint.style.display = 'block';
+  refreshUI();
+}
+
+function refreshUI() {
+  const prods  = dbGetAll();
+  const listas = dbGetListas();
+  dbStatus.textContent = prods.length + ' productos';
+  statsBar.innerHTML = `
+    <div class="stat-chip">Productos totales: <strong>${prods.length}</strong></div>
+    <div class="stat-chip">Listas importadas: <strong>${listas.length}</strong></div>`;
+
+  if (listas.length === 0) {
+    listContainer.innerHTML = '<div class="empty-lists">Aún no has importado ninguna lista.</div>';
+    return;
+  }
+  listContainer.innerHTML = listas.map(l => `
+    <div class="list-item">
+      <div>
+        <div class="list-name">${l.nombre}</div>
+        <div class="list-meta">${l.productos} productos · importado ${l.fecha}</div>
+      </div>
+      <button class="list-del" data-nombre="${encodeURIComponent(l.nombre)}">Eliminar</button>
+    </div>`).join('')
+    + `<button class="btn-clear-all" id="clearAll">Borrar todo</button>`;
+
+  listContainer.querySelectorAll('.list-del').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const nombre = decodeURIComponent(btn.dataset.nombre);
+      if (!confirm(`¿Eliminar la lista "${nombre}"?`)) return;
+      dbDeleteLista(nombre);
+      refreshUI();
+    });
+  });
+  document.getElementById('clearAll')?.addEventListener('click', () => {
+    if (!confirm('¿Borrar TODOS los productos y listas?')) return;
+    dbClearAll(); resultDiv.innerHTML = ''; saveHint.style.display = 'none'; refreshUI();
+  });
+}
+
+// Guardar / Cargar base
+document.getElementById('btnSaveDB').addEventListener('click', saveDB);
+document.getElementById('btnLoadDB').addEventListener('click', () => document.getElementById('loadDBInput').click());
+document.getElementById('loadDBInput').addEventListener('change', e => {
+  if (e.target.files[0]) { loadDBFromFile(e.target.files[0]); e.target.value = ''; }
+});
+
+refreshUI();
+</script>
+</body>
+</html>
