@@ -143,7 +143,7 @@ header h1 { font-size: 1.4rem; font-weight: 700; }
   <h1>Consulta de Precios SP</h1>
   <div class="header-right">
     <span id="dbStatus">0 productos</span>
-    <button class="btn-header btn-load" id="btnLoadDB">📂 Cargar base</button>
+    <label class="btn-header btn-load" for="loadDBInput">📂 Cargar base</label>
     <button class="btn-header btn-save" id="btnSaveDB">💾 Guardar base</button>
   </div>
 </header>
@@ -185,7 +185,7 @@ header h1 { font-size: 1.4rem; font-weight: 700; }
 
 </div>
 
-<input type="file" id="loadDBInput" accept=".json" style="display:none" />
+<input type="file" id="loadDBInput" accept=".json,application/json,text/plain,*/*" style="display:none" />
 
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc =
@@ -582,7 +582,7 @@ function refreshUI() {
 
 // Guardar / Cargar base
 document.getElementById('btnSaveDB').addEventListener('click', saveDB);
-document.getElementById('btnLoadDB').addEventListener('click', () => document.getElementById('loadDBInput').click());
+// btnLoadDB es ahora un <label> — el navegador abre el picker directamente
 document.getElementById('loadDBInput').addEventListener('change', e => {
   if (e.target.files[0]) { loadDBFromFile(e.target.files[0]); e.target.value = ''; }
 });
