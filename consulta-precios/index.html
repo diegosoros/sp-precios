@@ -194,7 +194,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc =
 // ─── Base de datos en memoria ────────────────────────────────────
 let DB = { productos: {}, listas: [] };
 
-function dbGet(key)      { return DB.productos[key.toUpperCase()] ?? null; }
+function dbGet(key)      { var v = DB.productos[key.toUpperCase()]; return v !== undefined ? v : null; }
 function dbGetAll()      { return Object.values(DB.productos); }
 function dbGetListas()   { return DB.listas; }
 
@@ -223,31 +223,23 @@ function saveDB() {
 }
 
 function loadDBFromFile(file) {
-  const reader = new FileReader();
-  reader.onload = e => {
+  var reader = new FileReader();
+  reader.addEventListener('load', function() {
     try {
-      // Quitar BOM y espacios invisibles que iOS/Windows pueden agregar
-      let text = e.target.result;
-      if (typeof text !== 'string') {
-        // Fallback: decodificar como ArrayBuffer
-        const decoder = new TextDecoder('utf-8');
-        text = decoder.decode(text);
-      }
-      text = text.replace(/^﻿/, '').trim(); // quitar BOM UTF-8
-      const data = JSON.parse(text);
+      var text = reader.result.replace(/^﻿/, '').trim();
+      var data = JSON.parse(text);
       if (data && data.productos && data.listas) {
         DB = data;
         refreshUI();
-        document.getElementById('dbStatus').textContent = Object.keys(DB.productos).length + ' productos';
-        alert('✓ Base cargada: ' + Object.keys(DB.productos).length + ' productos');
+        alert('Base cargada: ' + Object.keys(DB.productos).length + ' productos');
       } else {
-        alert('Archivo inválido. Usa un archivo sp_precios.json generado por esta app.');
+        alert('Archivo invalido.');
       }
     } catch(err) {
-      alert('Error leyendo el archivo: ' + err.message);
+      alert('Error: ' + err.message);
     }
-  };
-  reader.onerror = () => alert('No se pudo leer el archivo.');
+  });
+  reader.addEventListener('error', function() { alert('No se pudo leer el archivo.'); });
   reader.readAsText(file, 'utf-8');
 }
 
@@ -358,7 +350,7 @@ async function parsePDF(arrayBuffer) {
     for (let i = 0; i < rows.length; i++) {
       const full = rows[i].items.map(it => it.text).join(' ').toUpperCase();
       if (full.includes('PRECIO') || full.includes('MAYOREO')) {
-        const candidates = [...rows[i].items, ...(rows[i+1]?.items || [])];
+        const candidates = [...rows[i].items, ...(rows[i+1] && rows[i+1].items ? rows[i+1].items : [])];
         for (const it of candidates) {
           const t = detectPriceType(it.text);
           if (t && !priceColumns.find(pc => Math.abs(pc.x - it.x) < 20))
@@ -586,7 +578,8 @@ function refreshUI() {
       refreshUI();
     });
   });
-  document.getElementById('clearAll')?.addEventListener('click', () => {
+  var clearAllBtn = document.getElementById('clearAll');
+  if (clearAllBtn) clearAllBtn.addEventListener('click', function() {
     if (!confirm('¿Borrar TODOS los productos y listas?')) return;
     dbClearAll(); resultDiv.innerHTML = ''; saveHint.style.display = 'none'; refreshUI();
   });
