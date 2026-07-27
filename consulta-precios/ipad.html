@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Precios SP</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: -apple-system, 'Segoe UI', sans-serif; background: #f0f2f5; min-height: 100vh; }
+
+header {
+  background: #1a1a2e; color: white;
+  padding: 20px 24px; display: -webkit-flex; display: flex;
+  -webkit-align-items: center; align-items: center; gap: 12px;
+}
+header h1 { font-size: 1.3rem; font-weight: 700; }
+header span { margin-left: auto; font-size: 0.8rem; opacity: 0.6; }
+
+.container { max-width: 700px; margin: 0 auto; padding: 24px 16px; }
+
+.card {
+  background: white; border-radius: 14px; padding: 24px;
+  box-shadow: 0 3px 14px rgba(0,0,0,0.08); margin-bottom: 20px;
+}
+.card h2 { font-size: 0.9rem; color: #777; margin-bottom: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* Search */
+#searchInput {
+  width: 100%; padding: 16px 18px; border: 2px solid #e0e0e0; border-radius: 10px;
+  font-size: 1.2rem; font-family: 'Courier New', monospace; letter-spacing: 1px;
+  text-transform: uppercase; outline: none; -webkit-appearance: none;
+  margin-bottom: 12px;
+}
+#searchInput:focus { border-color: #e8b400; }
+#searchBtn {
+  width: 100%; padding: 16px; background: #e8b400; border: none; border-radius: 10px;
+  font-size: 1.1rem; font-weight: 700; color: #1a1a2e; cursor: pointer;
+  -webkit-appearance: none;
+}
+#searchBtn:active { background: #d4a500; }
+
+/* Result */
+#result { margin-top: 16px; }
+.result-card { animation: fadeIn 0.2s; }
+@-webkit-keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+@keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+.result-code { font-size: 0.7rem; color: #aaa; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; }
+.result-desc { font-size: 1rem; font-weight: 700; color: #1a1a2e; margin: 6px 0 18px; line-height: 1.4; }
+.prices-grid { display: -webkit-flex; display: flex; gap: 10px; -webkit-flex-wrap: wrap; flex-wrap: wrap; }
+.price-chip { -webkit-flex: 1; flex: 1; min-width: 120px; border-radius: 10px; padding: 14px 16px; text-align: center; border: 2px solid; }
+.price-chip.publico  { background: #fffbeb; border-color: #fde68a; }
+.price-chip.mayoreo  { background: #eff6ff; border-color: #bfdbfe; }
+.price-chip.mayoreoB { background: #f0fdf4; border-color: #bbf7d0; }
+.price-chip.mayoreoA { background: #fdf4ff; border-color: #e9d5ff; }
+.price-chip label { display: block; font-size: 0.65rem; font-weight: 700; color: #999; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 5px; }
+.price-chip .amount { font-size: 1.4rem; font-weight: 800; color: #1a1a2e; }
+.result-sources { margin-top: 12px; font-size: 0.72rem; color: #bbb; }
+.not-found { text-align: center; padding: 20px 0; color: #999; }
+.not-found strong { display: block; color: #666; margin-bottom: 4px; }
+
+/* Load */
+.load-label {
+  display: block; width: 100%; padding: 16px; background: #1a1a2e; color: white;
+  border-radius: 10px; font-size: 1rem; font-weight: 700; text-align: center;
+  cursor: pointer; -webkit-appearance: none;
+}
+.load-label:active { background: #16213e; }
+.load-hint { font-size: 0.8rem; color: #aaa; text-align: center; margin-top: 10px; }
+.loaded-info { margin-top: 12px; padding: 12px; background: #f0fdf4; border-radius: 8px; font-size: 0.85rem; color: #16a34a; text-align: center; font-weight: 600; display: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#e8b400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+  </svg>
+  <h1>Precios SP</h1>
+  <span id="dbStatus">Sin base</span>
+</header>
+
+<div class="container">
+
+  <!-- BUSCAR -->
+  <div class="card">
+    <h2>Buscar código</h2>
+    <input id="searchInput" type="text" placeholder="Ej: ACI730" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" />
+    <button id="searchBtn">Buscar</button>
+    <div id="result"></div>
+  </div>
+
+  <!-- CARGAR -->
+  <div class="card">
+    <h2>Cargar base de datos</h2>
+    <label class="load-label" for="loadInput">📂 Seleccionar sp_precios.json</label>
+    <input type="file" id="loadInput" accept="*/*" style="display:none" />
+    <div class="load-hint">Selecciona el archivo sp_precios.json que guardaste desde la computadora</div>
+    <div class="loaded-info" id="loadedInfo"></div>
+  </div>
+
+</div>
+
+<script>
+var DB = { productos: {}, listas: [] };
+
+function dbGet(key) {
+  var k = key.toUpperCase();
+  var v = DB.productos[k];
+  return v !== undefined ? v : null;
+}
+
+var PRICE_LABELS = {
+  publico:  { label: 'Publico',   cls: 'publico' },
+  mayoreo:  { label: 'Mayoreo',   cls: 'mayoreo' },
+  mayoreoA: { label: 'Mayoreo A', cls: 'mayoreoA' },
+  mayoreoB: { label: 'Mayoreo B', cls: 'mayoreoB' }
+};
+
+function formatMXN(n) {
+  if (n == null) return '—';
+  return '$' + n.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function doSearch() {
+  var q = document.getElementById('searchInput').value.trim().toUpperCase();
+  if (!q) return;
+  var prod = dbGet(q);
+  var resultDiv = document.getElementById('result');
+  if (!prod) {
+    resultDiv.innerHTML = '<div class="not-found"><strong>No encontrado: ' + q + '</strong>Verifica el código</div>';
+    return;
+  }
+  var chips = '';
+  var tipos = Object.keys(prod.precios);
+  for (var i = 0; i < tipos.length; i++) {
+    var tipo = tipos[i];
+    var val = prod.precios[tipo];
+    if (val == null) continue;
+    var info = PRICE_LABELS[tipo] || { label: tipo, cls: 'mayoreo' };
+    chips += '<div class="price-chip ' + info.cls + '"><label>' + info.label + '</label><div class="amount">' + formatMXN(val) + '</div></div>';
+  }
+  var fuentes = (prod.fuentes || []).join(', ');
+  resultDiv.innerHTML = '<div class="result-card">'
+    + '<div class="result-code">' + prod.codigo + '</div>'
+    + '<div class="result-desc">' + (prod.descripcion || '') + '</div>'
+    + '<div class="prices-grid">' + chips + '</div>'
+    + '<div class="result-sources">Fuente: ' + fuentes + '</div>'
+    + '</div>';
+}
+
+document.getElementById('searchBtn').addEventListener('click', doSearch);
+document.getElementById('searchInput').addEventListener('keydown', function(e) {
+  if (e.keyCode === 13) doSearch();
+});
+
+// Cargar JSON
+document.getElementById('loadInput').addEventListener('change', function(e) {
+  var file = e.target.files && e.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.addEventListener('load', function() {
+    try {
+      var text = reader.result;
+      // Quitar BOM si existe
+      if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+      text = text.trim();
+      var data = JSON.parse(text);
+      if (data && data.productos && data.listas) {
+        DB = data;
+        var count = Object.keys(DB.productos).length;
+        document.getElementById('dbStatus').textContent = count + ' productos';
+        var info = document.getElementById('loadedInfo');
+        info.textContent = '✓ ' + count + ' productos cargados';
+        info.style.display = 'block';
+      } else {
+        alert('Archivo invalido. Usa sp_precios.json de la app.');
+      }
+    } catch(err) {
+      alert('Error al leer el archivo: ' + err.message);
+    }
+  });
+  reader.addEventListener('error', function() {
+    alert('No se pudo leer el archivo.');
+  });
+  reader.readAsText(file, 'utf-8');
+  e.target.value = '';
+});
+</script>
+</body>
+</html>
