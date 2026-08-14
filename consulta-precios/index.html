@@ -350,7 +350,10 @@ async function parsePDF(arrayBuffer) {
     for (let i = 0; i < rows.length; i++) {
       const full = rows[i].items.map(it => it.text).join(' ').toUpperCase();
       if (full.includes('PRECIO') || full.includes('MAYOREO')) {
-        const candidates = [...rows[i].items, ...(rows[i+1] && rows[i+1].items ? rows[i+1].items : [])];
+        const candidates = [...rows[i].items];
+        for (var ni = 1; ni <= 4; ni++) {
+          if (rows[i+ni] && rows[i+ni].items) candidates.push.apply(candidates, rows[i+ni].items);
+        }
         for (const it of candidates) {
           const t = detectPriceType(it.text);
           if (t && !priceColumns.find(pc => Math.abs(pc.x - it.x) < 20))
