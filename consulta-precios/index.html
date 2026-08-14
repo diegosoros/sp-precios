@@ -433,8 +433,9 @@ function mergeProductos(nuevos, nombreLista, fechaLista) {
       for (const [tipo, val] of Object.entries(prod.precios)) {
         if (val == null) continue;
         const existingTs = mergedFecha[tipo] || 0;
-        // Actualizar si la lista nueva es más reciente (o igual fecha con precio diferente)
-        if (fechaTs >= existingTs) {
+        // Si la lista nueva tiene fecha: gana la más reciente
+        // Si no tiene fecha detectable (fechaTs=0): siempre actualizar
+        if (fechaTs === 0 || fechaTs >= existingTs) {
           merged[tipo] = val;
           mergedFecha[tipo] = fechaTs;
         }
