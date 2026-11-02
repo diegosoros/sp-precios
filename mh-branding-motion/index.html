@@ -5,108 +5,139 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>MH Branding Merch</title>
 <style>
-  :root{--rust:#a94e21;--rust2:#c4632f;--cream:#f6efe5;--ink:#171717;--tan:#cdbdaa;--mute:#6d6256}
-  html,body{margin:0;height:100%;background:#0d0d0d;overflow:hidden}
+  @font-face{font-family:Anton;src:url(assets/fonts/Anton-latin.woff2) format('woff2');font-display:block}
+  :root{--ink:#111;--ink2:#1b1b1b;--gold:#efa83a;--gold2:#b98432;--cream:#eee8df;--sand:#cfc4b4}
+  html,body{margin:0;height:100%;background:#000;overflow:hidden}
   body{display:flex;align-items:center;justify-content:center}
   #stage{position:relative;flex:none;width:1080px;height:1920px;overflow:hidden;background:var(--ink);
-    font-family:"Inter Display",Inter,"Helvetica Neue",Arial,sans-serif;font-weight:900;transform-origin:center}
-  .scene,.wipe{position:absolute;inset:0}
+    font-family:Inter,"Helvetica Neue",Arial,sans-serif;transform-origin:center}
+  .scene,.layer{position:absolute;inset:0}
   .abs{position:absolute;will-change:transform,opacity}
-  .line{position:absolute;left:0;right:0;overflow:hidden;text-align:center;white-space:nowrap;line-height:1.05;padding:0 0 .04em}
+  .ph{position:absolute;overflow:hidden;will-change:transform,opacity}
+  .ph>div{position:absolute;inset:0;background-repeat:no-repeat;transform-origin:center;will-change:transform}
+  .line{position:absolute;left:0;right:0;overflow:hidden;text-align:center;white-space:nowrap;
+    font-family:Anton,Impact,sans-serif;line-height:1.14;padding-top:.04em;text-transform:uppercase}
   .line>span{display:inline-block;will-change:transform}
-  svg.ic{fill:none;stroke:currentColor;stroke-width:5;stroke-linecap:round;stroke-linejoin:round;overflow:visible}
-  .cap{font-weight:700;letter-spacing:.3em;text-transform:uppercase}
-  .bubble{position:absolute;max-width:470px;padding:26px 34px;border-radius:40px;font-size:40px;font-weight:700;line-height:1.2}
+  .grad{position:absolute;left:0;right:0;bottom:0;height:1150px;
+    background:linear-gradient(to bottom,rgba(17,17,17,0),rgba(17,17,17,.68) 36%,rgba(17,17,17,.95) 70%,#111)}
+  .ph>.chip{position:absolute;inset:auto auto 22px 22px;padding:10px 22px 8px;border-radius:14px;background:var(--ink);color:var(--cream);
+    font-family:Anton,Impact,sans-serif;font-size:42px;letter-spacing:1px}
+  svg.ic{fill:none;stroke:currentColor;stroke-width:6;stroke-linecap:round;stroke-linejoin:round;overflow:visible}
+  .bubble{position:absolute;max-width:540px;padding:26px 34px;border-radius:40px;font-size:40px;font-weight:700;line-height:1.25}
   .dot{display:inline-block;width:18px;height:18px;border-radius:50%;background:var(--ink);margin:0 6px}
+  .drip{position:absolute;top:0;height:2300px;background:var(--gold);border-radius:0 0 60px 60px}
+  .row{position:absolute;left:0;right:0;display:flex;align-items:center;justify-content:center;gap:28px}
+  #grain{position:absolute;inset:-200px;pointer-events:none;opacity:.10;background-image:url(assets/img/grain.png);mix-blend-mode:overlay}
 </style>
 </head>
 <body>
 <div id="stage">
 
-  <!-- ESCENA 1 · HACEMOS MERCH -->
+  <!-- 1 · HOOK: HACEMOS MERCH -->
   <div class="scene" id="s1">
-    <div class="abs cap" id="s1top" style="left:0;right:0;top:150px;text-align:center;font-size:34px;color:var(--tan)">MH Branding presenta</div>
-    <div class="line" id="s1a" style="top:690px;font-size:150px;color:var(--cream)"><span>HACEMOS</span></div>
-    <div class="line" id="s1b" style="top:840px;font-size:290px;color:var(--rust2);letter-spacing:-12px;overflow:visible"><span>MERCH</span></div>
-    <div class="abs" id="s1bar" style="left:190px;top:1230px;width:700px;height:22px;background:var(--cream);transform-origin:left"></div>
-    <div class="abs" id="s1ring" style="left:720px;top:330px;width:280px;height:280px"></div>
-    <div class="abs cap" id="s1bot" style="left:0;right:0;top:1640px;text-align:center;font-size:32px;color:var(--tan)">playeras · gorras · tazas · tote bags</div>
+    <div class="ph" id="s1p0" style="inset:0"><div></div></div>
+    <div class="ph" id="s1p1" style="inset:0"><div></div></div>
+    <div class="ph" id="s1p2" style="inset:0"><div></div></div>
+    <div class="grad"></div>
+    <img class="abs" id="s1logo" src="assets/img/logo-dark.png" style="left:830px;top:50px;width:200px">
+    <div class="line" id="s1a" data-max="980" style="top:1150px;font-size:190px;color:var(--cream)"><span>HACEMOS</span></div>
+    <div class="line" id="s1b" data-max="1000" style="top:1330px;font-size:420px;color:var(--gold);overflow:visible;line-height:1"><span>MERCH</span></div>
   </div>
 
-  <div class="wipe" id="w1"><div class="abs" style="left:-660px;top:-240px;width:2400px;height:2400px;border-radius:50%;background:var(--rust)" id="w1c"></div></div>
-
-  <!-- ESCENA 2 · TÚ TIENES LA IDEA -->
+  <!-- 2 · TÚ TIENES LA IDEA → NOSOTROS LA HACEMOS REALIDAD -->
   <div class="scene" id="s2">
-    <div class="abs" id="s2rays" style="left:290px;top:180px;width:500px;height:500px"></div>
-    <div class="abs" id="s2bulb" style="left:340px;top:230px;width:400px;height:400px;color:var(--cream)"></div>
-    <div class="abs" id="s2tee" style="left:340px;top:230px;width:400px;height:400px;color:var(--cream)"></div>
-    <div class="line" id="s2a" style="top:960px;font-size:130px;color:var(--cream)"><span>¿TÚ TIENES</span></div>
-    <div class="line" id="s2b" style="top:1110px;font-size:200px;color:var(--ink)"><span>LA IDEA?</span></div>
-    <div class="line" id="s2c" style="top:900px;font-size:120px;color:var(--cream)"><span>NOSOTROS</span></div>
-    <div class="line" id="s2d" style="top:1040px;font-size:140px;color:var(--cream)"><span>LA HACEMOS</span></div>
-    <div class="abs" id="s2hl" style="left:110px;top:1222px;width:860px;height:230px;background:var(--ink);transform-origin:left"></div>
-    <div class="line" id="s2e" style="top:1230px;font-size:180px;color:var(--cream)"><span>REALIDAD</span></div>
+    <div class="abs" id="s2grid" style="inset:0;background-image:linear-gradient(#ffffff0d 2px,transparent 2px),linear-gradient(90deg,#ffffff0d 2px,transparent 2px);background-size:90px 90px"></div>
+    <div class="ph" id="s2card" style="left:110px;top:150px;width:860px;height:1000px;border-radius:44px"><div></div></div>
+    <svg class="abs" id="s2sketch" viewBox="0 0 100 100" style="left:160px;top:200px;width:760px;height:900px;overflow:visible" preserveAspectRatio="xMidYMid meet">
+      <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path class="draw" pathLength="1" stroke="#eee8df" stroke-width="1.1" d="M35 14 L20 20 L6 38 L20 47 L27 39 L27 92 L73 92 L73 39 L80 47 L94 38 L80 20 L65 14 Q50 27 35 14 Z"/>
+        <path class="draw" pathLength="1" stroke="#eee8df" stroke-width=".6" stroke-dasharray=".02 .02" d="M27 52 L73 52"/>
+        <path class="draw" pathLength="1" stroke="#efa83a" stroke-width="1.2" d="M38 46 L36 34 L42 39 L46 30 L50 37 L54 30 L58 39 L64 34 L62 46 Z"/>
+        <path class="draw" pathLength="1" stroke="#efa83a" stroke-width="1" d="M40 46 L40 51 M45 46 L45 54 M50 46 L50 50 M55 46 L55 55 M60 46 L60 51"/>
+        <path class="draw" pathLength="1" stroke="#eee8df" stroke-width="1.1" d="M39 66 L39 58 L43 63 L47 58 L47 66 M51 58 L51 66 M51 62 L57 62 M57 58 L57 66"/>
+        <path class="draw" pathLength="1" stroke="#eee8df" stroke-width=".9" d="M33 72 L67 72"/>
+      </g>
+    </svg>
+    <div class="grad" id="s2grad" style="opacity:0"></div>
+    <div class="line" id="s2a" data-max="980" style="top:1210px;font-size:160px;color:var(--cream)"><span>¿TÚ TIENES</span></div>
+    <div class="line" id="s2b" data-max="1000" style="top:1400px;font-size:270px;color:var(--gold)"><span>LA IDEA?</span></div>
+    <div class="line" id="s2c" data-max="980" style="top:1200px;font-size:130px;color:var(--cream)"><span>NOSOTROS</span></div>
+    <div class="line" id="s2d" data-max="980" style="top:1350px;font-size:150px;color:var(--cream)"><span>LA HACEMOS</span></div>
+    <div class="line" id="s2e" data-max="1000" style="top:1520px;font-size:270px;color:var(--gold)"><span>REALIDAD</span></div>
   </div>
 
-  <div class="wipe" id="w2"><div class="abs" id="w2c" style="left:0;top:0;width:1080px;height:1920px;background:var(--cream)"></div></div>
+  <div class="layer" id="dripA"></div>
 
-  <!-- ESCENA 3 · PARA TU ... -->
+  <!-- 3 · PARA TU MARCA / NEGOCIO / RESTAURANTE / FIESTA -->
   <div class="scene" id="s3">
-    <div class="line" id="s3a" style="top:440px;font-size:110px;color:var(--ink);letter-spacing:6px"><span>PARA TU</span></div>
+    <div id="s3photos"></div>
+    <div class="grad" style="background:linear-gradient(to bottom,rgba(17,17,17,0),rgba(17,17,17,.7) 32%,rgba(17,17,17,.96) 60%,#111)"></div>
+    <div class="abs" id="s3prog" style="left:60px;right:60px;top:60px;height:10px;display:flex;gap:14px"></div>
+    <div class="line" id="s3a" style="top:1400px;font-size:110px;color:var(--cream);letter-spacing:4px"><span>PARA TU</span></div>
     <div id="s3words"></div>
-    <div class="abs" id="s3disc" style="left:300px;top:1000px;width:480px;height:480px;border-radius:50%;background:var(--ink)"></div>
-    <div id="s3icons"></div>
     <div id="s3conf"></div>
-    <div class="abs" id="s3prog" style="left:340px;top:1640px;width:400px;height:12px;display:flex;gap:16px"></div>
   </div>
 
-  <div class="wipe" id="w3"><div class="abs" id="w3c" style="left:-1800px;top:120px;width:3600px;height:3600px;border-radius:50%;background:var(--ink)"></div></div>
-
-  <!-- ESCENA 4 · HACEMOS TU MERCH -->
-  <div class="scene" id="s4">
-    <div id="s4prods"></div>
-    <div class="line" id="s4a" style="top:730px;font-size:140px;color:var(--cream)"><span>HACEMOS</span></div>
-    <div class="line" id="s4b" style="top:890px;font-size:200px;color:var(--rust2);letter-spacing:-6px"><span>TU MERCH</span></div>
-    <div class="abs cap" id="s4c" style="left:0;right:0;top:1180px;text-align:center;font-size:36px;color:var(--tan)">a tu medida · con tu logo</div>
+  <!-- 4 · HACEMOS TU MERCH (productos) -->
+  <div class="scene" id="s4" style="background:var(--cream)">
+    <div class="line" id="s4a" style="top:100px;font-size:130px;color:var(--ink)"><span>HACEMOS</span></div>
+    <div class="line" id="s4b" data-max="1000" style="top:240px;font-size:230px;color:var(--gold2)"><span>TU MERCH</span></div>
+    <div id="s4tiles"></div>
+    <div class="abs" id="s4tech" style="left:0;right:0;top:1760px;text-align:center;font-size:34px;font-weight:800;letter-spacing:.18em;color:var(--ink)">
+      DTF <span style="color:var(--gold2)">•</span> BORDADO <span style="color:var(--gold2)">•</span> SERIGRAFÍA <span style="color:var(--gold2)">•</span> SUBLIMACIÓN</div>
   </div>
 
-  <div class="wipe" id="w4"><div class="abs" id="w4c" style="left:-700px;top:-600px;width:2600px;height:3200px;background:var(--rust);transform-origin:center"></div></div>
+  <div class="layer" id="dripB"></div>
 
-  <!-- ESCENA 5 · MÁNDANOS UN MENSAJE -->
-  <div class="scene" id="s5">
-    <div class="abs" id="s5card" style="left:130px;top:250px;width:820px;height:660px;border-radius:64px;background:var(--ink);overflow:hidden">
-      <div style="position:absolute;left:0;right:0;top:0;height:150px;border-bottom:2px solid #2c2c2c;display:flex;align-items:center;gap:26px;padding:0 44px">
-        <div style="width:90px;height:90px;border-radius:50%;background:var(--rust);color:var(--cream);font-size:40px;display:flex;align-items:center;justify-content:center">MH</div>
-        <div><div style="color:var(--cream);font-size:40px;font-weight:800">MH Branding</div><div style="color:#7fc37a;font-size:28px;font-weight:600">en línea</div></div>
+  <!-- 5 · MÁNDANOS UN MENSAJE -->
+  <div class="scene" id="s5" style="background:var(--gold)">
+    <div class="abs" id="s5card" style="left:110px;top:170px;width:860px;height:720px;border-radius:56px;background:var(--ink);overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.35)">
+      <div style="position:absolute;left:0;right:0;top:0;height:160px;border-bottom:2px solid #2a2a2a;display:flex;align-items:center;gap:26px;padding:0 44px">
+        <div style="width:100px;height:100px;border-radius:50%;background:#000;border:3px solid var(--gold);display:flex;align-items:center;justify-content:center">
+          <img src="assets/img/crown.png" style="width:70px"></div>
+        <div><div style="color:var(--cream);font-size:44px;font-weight:800">MH Branding</div><div style="color:var(--gold);font-size:30px;font-weight:600">en línea</div></div>
       </div>
-      <div class="bubble" id="s5b1" style="right:44px;top:200px;background:var(--rust);color:var(--cream);border-bottom-right-radius:10px"></div>
-      <div class="bubble" id="s5dots" style="left:44px;top:430px;background:var(--cream)"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
-      <div class="bubble" id="s5b2" style="left:44px;top:430px;background:var(--cream);color:var(--ink);border-bottom-left-radius:10px">¡Claro! Nosotros lo hacemos realidad.</div>
+      <div class="bubble" id="s5b1" style="right:44px;top:210px;background:var(--gold);color:var(--ink);border-bottom-right-radius:10px"></div>
+      <div class="bubble" id="s5dots" style="left:44px;top:450px;background:var(--cream)"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+      <div class="bubble" id="s5b2" style="left:44px;top:450px;background:var(--cream);color:var(--ink);border-bottom-left-radius:10px">¡Claro! Tú tienes la idea, nosotros la hacemos realidad.</div>
     </div>
-    <div class="line" id="s5a" style="top:1150px;font-size:170px;color:var(--cream)"><span>MÁNDANOS</span></div>
-    <div class="line" id="s5b" style="top:1330px;font-size:150px;color:var(--ink)"><span>UN MENSAJE</span></div>
-    <div class="abs" id="s5send" style="left:440px;top:1560px;width:200px;height:200px;color:var(--cream)"></div>
+    <div class="line" id="s5a" data-max="1000" style="top:960px;font-size:250px;color:var(--ink)"><span>MÁNDANOS</span></div>
+    <div class="line" id="s5b" data-max="1000" style="top:1225px;font-size:190px;color:var(--ink)"><span>UN MENSAJE</span></div>
+    <div class="abs" id="s5pill" style="left:140px;top:1500px;width:800px;height:150px;border-radius:75px;background:var(--ink);display:flex;align-items:center;justify-content:center;gap:28px">
+      <div id="s5wa" style="width:76px;height:76px;color:var(--gold)"></div>
+      <span style="font-family:Anton,Impact,sans-serif;font-size:84px;color:var(--cream);letter-spacing:2px">351 132 0007</span>
+    </div>
+    <div class="row" id="s5ig" style="top:1700px;color:var(--ink)">
+      <div id="s5igic" style="width:58px;height:58px"></div>
+      <span style="font-size:52px;font-weight:800">@mhbrandingat</span>
+    </div>
   </div>
 
-  <div class="wipe" id="w5"><div class="abs" id="w5c" style="left:-1260px;top:-260px;width:3600px;height:3600px;border-radius:50%;background:var(--cream)"></div></div>
+  <div class="layer" id="w5" style="display:none"><div class="abs" id="w5c" style="left:-1260px;top:-200px;width:3600px;height:3600px;border-radius:50%;background:var(--ink)"></div></div>
 
-  <!-- ESCENA 6 · SOMOS MH BRANDING -->
+  <!-- 6 · CIERRE: LOGO + CONTACTO -->
   <div class="scene" id="s6">
-    <div class="abs" id="s6ring" style="left:250px;top:330px;width:580px;height:580px"></div>
-    <div class="abs" id="s6disc" style="left:330px;top:410px;width:420px;height:420px;border-radius:50%;background:var(--rust)"></div>
-    <div class="abs" id="s6mh" style="left:330px;top:410px;width:420px;height:420px;display:flex;align-items:center;justify-content:center;color:var(--cream);font-size:200px;letter-spacing:-10px">MH</div>
-    <div class="abs cap" id="s6somos" style="left:0;right:0;top:1010px;text-align:center;font-size:48px;color:var(--mute)">somos</div>
-    <div class="line" id="s6name" style="top:1080px;font-size:130px;color:var(--ink)"><span>MH BRANDING</span></div>
-    <div class="abs" id="s6tag" style="left:120px;right:120px;top:1290px;text-align:center;font-size:44px;font-weight:600;line-height:1.35;color:#5d544a">Tú tienes la idea,<br>nosotros la hacemos realidad.</div>
-    <div class="abs" id="s6cta" style="left:140px;top:1510px;width:800px;height:130px;border-radius:65px;background:var(--ink);color:var(--cream);display:flex;align-items:center;justify-content:center;gap:24px;font-size:44px;font-weight:800;letter-spacing:2px">
-      <span>MÁNDANOS UN MENSAJE</span><svg class="ic" viewBox="0 0 100 100" style="width:56px;height:56px;color:var(--rust2)"><path d="M10 48 L90 14 L66 88 L48 58 Z"/><path d="M48 58 L90 14"/></svg>
+    <div class="abs" id="s6glow" style="left:140px;top:180px;width:800px;height:800px;border-radius:50%;background:radial-gradient(circle,rgba(239,168,58,.28),rgba(239,168,58,0) 65%)"></div>
+    <img class="abs" id="s6logo" src="assets/img/logo-light.png" style="left:150px;top:260px;width:780px">
+    <div class="line" id="s6a" data-max="980" style="top:960px;font-size:84px;color:var(--cream)"><span>TÚ TIENES LA IDEA,</span></div>
+    <div class="line" id="s6b" data-max="980" style="top:1060px;font-size:84px;color:var(--gold)"><span>NOSOTROS LA HACEMOS REALIDAD</span></div>
+    <div class="row" id="s6wa" style="top:1300px;color:var(--cream)">
+      <div id="s6waic" style="width:84px;height:84px;color:var(--gold)"></div>
+      <span style="font-family:Anton,Impact,sans-serif;font-size:96px;letter-spacing:2px">351 132 0007</span>
     </div>
+    <div class="row" id="s6ig" style="top:1450px;color:var(--cream)">
+      <div id="s6igic" style="width:76px;height:76px;color:var(--gold)"></div>
+      <span style="font-size:60px;font-weight:800">@mhbrandingat</span>
+    </div>
+    <div class="abs" id="s6tech" style="left:0;right:0;top:1700px;text-align:center;font-size:27px;font-weight:700;letter-spacing:.1em;color:var(--sand)">
+      PLAYERAS · HOODIES · POLOS · GORRAS · TOTE BAGS · UNIFORMES</div>
   </div>
 
+  <div id="grain"></div>
 </div>
 
 <script>
-const T = 23;           // duración total en segundos
+const T = 25;           // duración total en segundos
 const $ = id => document.getElementById(id);
 
 // ---------- easing ----------
@@ -121,201 +152,262 @@ const lerp = (a, b, x) => a + (b - a) * x;
 function S(el, { x = 0, y = 0, yp = 0, s = 1, sx, sy, r = 0, o = 1, b = 0 } = {}) {
   el.style.transform = `translate(${x}px,${y}px) translateY(${yp}%) rotate(${r}deg) scale(${sx ?? s},${sy ?? s})`;
   el.style.opacity = o;
-  el.style.filter = b > .05 ? `blur(${b}px)` : 'none';
+  el.style.filter = b > .05 ? `blur(${b}px)` : '';
 }
 // línea con máscara: entra desde abajo, sale hacia arriba
-function maskLine(el, t, inS, outS, dur = .45) {
+function maskLine(el, t, inS, outS, dur = .4) {
   const i = eOut(p(t, inS, inS + dur)), o = outS == null ? 0 : eIn(p(t, outS, outS + dur * .8));
-  S(el.firstElementChild, { yp: 110 * (1 - i) - 110 * o });
+  S(el.firstElementChild, { yp: 115 * (1 - i) - 115 * o });
 }
 function scene(id, t, s, e) { const on = t >= s && t < e; $(id).style.display = on ? 'block' : 'none'; return on; }
 
-// ---------- iconos ----------
-const svg = (d, extra = '') => `<svg class="ic" viewBox="0 0 100 100" style="width:100%;height:100%">${d.map(x => `<path d="${x}"/>`).join('')}${extra}</svg>`;
-const ICON = {
-  tee:   svg(['M35 14 L20 20 L8 38 L22 46 L28 38 L28 88 L72 88 L72 38 L78 46 L92 38 L80 20 L65 14 Q50 26 35 14 Z']),
-  bulb:  svg(['M50 10 C31 10 21 25 21 39 C21 51 29 58 36 66 L36 74 L64 74 L64 66 C71 58 79 51 79 39 C79 25 69 10 50 10 Z', 'M38 82 L62 82', 'M43 90 L57 90', 'M43 62 L43 50 L50 56 L57 50 L57 62']),
-  cap:   svg(['M16 64 C16 38 31 24 50 24 C69 24 84 38 84 64 Z', 'M16 64 L92 64 Q96 74 84 74 L16 74 Z', 'M50 24 C43 34 41 50 43 64'], '<circle cx="50" cy="20" r="3"/>'),
-  mug:   svg(['M20 32 L66 32 L66 80 Q66 88 58 88 L28 88 Q20 88 20 80 Z', 'M66 44 C84 44 84 72 66 72', 'M34 22 Q39 15 34 8', 'M50 22 Q55 15 50 8']),
-  tote:  svg(['M18 38 L82 38 L88 90 L12 90 Z', 'M36 38 C36 16 64 16 64 38'], '<circle cx="50" cy="64" r="9"/>'),
-  tag:   svg(['M12 52 L46 18 L84 16 L82 54 L48 88 Z'], '<circle cx="68" cy="32" r="6"/>'),
-  store: svg(['M14 40 L22 16 L78 16 L86 40', 'M14 40 Q24 52 34 40 Q44 52 54 40 Q64 52 74 40 Q80 50 86 40', 'M20 48 L20 88 L80 88 L80 48', 'M42 88 L42 64 L58 64 L58 88']),
-  food:  svg(['M18 70 C18 45 32 33 50 33 C68 33 82 45 82 70 Z', 'M8 70 L92 70', 'M50 33 L50 26', 'M28 80 L72 80'], '<circle cx="50" cy="21" r="5"/>'),
-  party: svg(['M16 88 L36 36 L68 68 Z', 'M54 30 L60 14', 'M70 44 L88 38', 'M64 34 L76 20', 'M26 62 L44 80'], '<circle cx="46" cy="14" r="3"/><circle cx="86" cy="24" r="3"/><circle cx="88" cy="58" r="3"/>'),
-  send:  svg(['M10 48 L90 14 L66 88 L48 58 Z', 'M48 58 L90 14']),
+// ---------- fotos (recortes que evitan el texto y el número impreso en los posters) ----------
+const IMG = {
+  p2: { src: 'assets/img/photo2.jpg', W: 1122, H: 1402 },
+  p3: { src: 'assets/img/photo3.jpg', W: 1122, H: 1402 },
+  p4: { src: 'assets/img/photo4.jpg', W: 1254, H: 1254 },
+  p5: { src: 'assets/img/photo5.jpg', W: 1254, H: 1254 },
 };
-function ringSVG(text, color, size) {
-  const r = 42;
-  return `<svg viewBox="0 0 100 100" style="width:100%;height:100%;overflow:visible"><defs><path id="rp${size}" d="M50 ${50 - r} a${r} ${r} 0 1 1 -0.01 0"/></defs>
-    <text style="font:800 8.4px Inter,Arial,sans-serif;letter-spacing:1.6px;fill:${color}"><textPath href="#rp${size}">${text}</textPath></text></svg>`;
+const CROP = {
+  street:  ['p4', 500, 0, 705, 1254],   // chavo con playera de corona + chava con tote
+  team:    ['p3', 660, 60, 462, 821],   // staff sonriendo, gorra y playera STAFF
+  uniform: ['p5', 660, 60, 594, 1056],  // polo y camisa tipo maja bordadas
+  back:    ['p2', 503, 120, 619, 720],  // espalda "Tu marca también se viste"
+  front:   ['p2', 238, 292, 462, 821],  // chava con logo al pecho
+  staff:   ['p3', 0, 120, 430, 764],    // gorra + lanyard STAFF
+  tee:     ['p4', 495, 370, 520, 664],
+  cap:     ['p4', 930, 195, 250, 320],
+  polo:    ['p5', 650, 320, 350, 447],
+  tote:    ['p3', 355, 600, 310, 395],
+};
+// llena un .ph con el recorte en modo "cover"
+function setPhoto(ph, key, bw, bh) {
+  const [k, x, y, w, h] = CROP[key], im = IMG[k], inner = ph.firstElementChild;
+  const s = Math.max(bw / w, bh / h);
+  inner.style.backgroundImage = `url(${im.src})`;
+  inner.style.backgroundSize = `${im.W * s}px ${im.H * s}px`;
+  inner.style.backgroundPosition = `${-x * s + (bw - w * s) / 2}px ${-y * s + (bh - h * s) / 2}px`;
 }
+// zoom tipo Ken Burns: solo acerca (≥1) para nunca mostrar fuera del recorte
+const kb = (el, z) => { el.firstElementChild.style.transform = `scale(${Math.max(1, z)})`; };
+
+// ---------- iconos ----------
+const WA = `<svg viewBox="0 0 100 100" style="width:100%;height:100%"><path d="M50 8a42 42 0 0 0-36 63L8 92l22-6A42 42 0 1 0 50 8z" fill="none" stroke="currentColor" stroke-width="7" stroke-linejoin="round"/>
+  <path d="M36 28c-3 0-7 4-7 10 0 13 18 33 34 34 6 0 10-4 10-7l-1-4-10-5c-2-1-3 0-4 1l-3 4c-6-2-12-8-14-14l4-3c1-1 2-2 1-4l-5-10c-1-2-3-2-5-2z" fill="currentColor"/></svg>`;
+const IG = `<svg viewBox="0 0 100 100" style="width:100%;height:100%" fill="none" stroke="currentColor" stroke-width="8"><rect x="10" y="10" width="80" height="80" rx="24"/><circle cx="50" cy="50" r="19"/><circle cx="74" cy="26" r="3" fill="currentColor"/></svg>`;
+$('s5wa').innerHTML = WA; $('s6waic').innerHTML = WA;
+$('s5igic').innerHTML = IG; $('s6igic').innerHTML = IG;
 
 // ---------- montaje ----------
-$('s1ring').innerHTML = ringSVG('MERCH • HECHO A TU MEDIDA • MH BRANDING • ', 'var(--tan)', 1);
-$('s2bulb').innerHTML = ICON.bulb;
-$('s2tee').innerHTML = ICON.tee;
-$('s2rays').innerHTML = `<svg viewBox="0 0 100 100" style="width:100%;height:100%;overflow:visible">${Array.from({ length: 12 }, (_, i) =>
-  `<line x1="50" y1="2" x2="50" y2="10" stroke="#f6efe5" stroke-width="2.4" stroke-linecap="round" transform="rotate(${i * 30} 50 50)"/>`).join('')}</svg>`;
-$('s5send').innerHTML = ICON.send;
-$('s6ring').innerHTML = ringSVG('MERCH • MARCAS • NEGOCIOS • FIESTAS • ', 'var(--rust)', 2);
+setPhoto($('s1p0'), 'street', 1080, 1920);
+setPhoto($('s1p1'), 'team', 1080, 1920);
+setPhoto($('s1p2'), 'uniform', 1080, 1920);
+setPhoto($('s2card'), 'back', 860, 1000);
 
 const WORDS = [
-  { w: 'MARCA', fs: 230, ic: 'tag', t: 7.35 },
-  { w: 'NEGOCIO', fs: 200, ic: 'store', t: 8.65 },
-  { w: 'RESTAURANTE', fs: 132, ic: 'food', t: 9.95 },
-  { w: 'FIESTA', fs: 220, ic: 'party', t: 11.25 },
+  { w: 'MARCA', ph: 'front', t: 7.8 },
+  { w: 'NEGOCIO', ph: 'staff', t: 9.2 },
+  { w: 'RESTAURANTE', ph: 'uniform', t: 10.6 },
+  { w: 'FIESTA', ph: 'team', t: 12.0 },
 ];
 WORDS.forEach((d, i) => {
-  $('s3words').insertAdjacentHTML('beforeend', `<div class="line" id="s3w${i}" style="top:${720 + (230 - d.fs) * .5}px;font-size:${d.fs}px;color:var(--rust);letter-spacing:-4px"><span>${d.w}</span></div>`);
-  $('s3icons').insertAdjacentHTML('beforeend', `<div class="abs" id="s3i${i}" style="left:400px;top:1100px;width:280px;height:280px;color:var(--cream)">${ICON[d.ic]}</div>`);
-  $('s3prog').insertAdjacentHTML('beforeend', `<div style="flex:1;height:100%;border-radius:6px;background:#e0d5c7;overflow:hidden"><div id="s3p${i}" style="height:100%;width:100%;background:var(--rust);transform-origin:left"></div></div>`);
+  $('s3photos').insertAdjacentHTML('beforeend', `<div class="ph" id="s3p${i}" style="inset:0"><div></div></div>`);
+  setPhoto($(`s3p${i}`), d.ph, 1080, 1920);
+  $('s3words').insertAdjacentHTML('beforeend', `<div class="line" id="s3w${i}" data-max="1000" style="top:1520px;font-size:300px;color:var(--gold);line-height:1.05"><span>${d.w}</span></div>`);
+  $('s3prog').insertAdjacentHTML('beforeend', `<div style="flex:1;height:100%;border-radius:5px;background:rgba(255,255,255,.3);overflow:hidden"><div id="s3g${i}" style="height:100%;background:var(--cream);transform-origin:left"></div></div>`);
 });
 
-// confeti determinista
-let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-const CONF = Array.from({ length: 46 }, () => ({
-  a: rnd() * Math.PI * 2, v: 500 + rnd() * 650, r: rnd() * 720 - 360, w: 16 + rnd() * 18, h: 26 + rnd() * 20,
-  c: ['#a94e21', '#171717', '#cdbdaa', '#c4632f'][Math.floor(rnd() * 4)],
+// confeti determinista (dorado)
+let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+const CONF = Array.from({ length: 60 }, () => ({
+  a: -Math.PI * (.1 + rnd() * .8), v: 700 + rnd() * 700, r: rnd() * 900 - 450, w: 14 + rnd() * 16, h: 24 + rnd() * 22,
+  c: ['#efa83a', '#eee8df', '#b98432', '#ffd27a'][Math.floor(rnd() * 4)], x0: 140 + rnd() * 800,
 }));
-CONF.forEach((c, i) => $('s3conf').insertAdjacentHTML('beforeend', `<div class="abs" id="cf${i}" style="left:${540 - c.w / 2}px;top:${1240 - c.h / 2}px;width:${c.w}px;height:${c.h}px;background:${c.c};border-radius:3px"></div>`));
+CONF.forEach((c, i) => $('s3conf').insertAdjacentHTML('beforeend',
+  `<div class="abs" id="cf${i}" style="left:${c.x0}px;top:1700px;width:${c.w}px;height:${c.h}px;background:${c.c};border-radius:3px;opacity:0"></div>`));
 
-const PRODS = [
-  { ic: 'tee', x: 120, y: 260, s: 300, r: -12, from: [-500, -300] },
-  { ic: 'cap', x: 700, y: 300, s: 270, r: 14, from: [600, -400] },
-  { ic: 'mug', x: 110, y: 1330, s: 270, r: 10, from: [-500, 500] },
-  { ic: 'tote', x: 690, y: 1350, s: 290, r: -10, from: [600, 500] },
+const TILES = [
+  { ph: 'tee', label: 'PLAYERAS', x: 75, y: 540, r: -2.5 },
+  { ph: 'cap', label: 'GORRAS', x: 555, y: 540, r: 2 },
+  { ph: 'polo', label: 'POLOS', x: 75, y: 1140, r: 2 },
+  { ph: 'tote', label: 'TOTE BAGS', x: 555, y: 1140, r: -2 },
 ];
-PRODS.forEach((d, i) => $('s4prods').insertAdjacentHTML('beforeend',
-  `<div class="abs" id="s4p${i}" style="left:${d.x}px;top:${d.y}px;width:${d.s}px;height:${d.s}px;color:${i % 2 ? 'var(--tan)' : 'var(--cream)'}">${ICON[d.ic]}</div>`));
+TILES.forEach((d, i) => {
+  $('s4tiles').insertAdjacentHTML('beforeend',
+    `<div class="ph" id="s4t${i}" style="left:${d.x}px;top:${d.y}px;width:450px;height:570px;border-radius:30px;box-shadow:0 20px 50px rgba(0,0,0,.18)"><div></div>
+      <div class="chip" id="s4c${i}">${d.label}</div></div>`);
+  setPhoto($(`s4t${i}`), d.ph, 450, 570);
+});
 
-const MSG = 'Hola, quiero hacer merch para mi marca';
+// gotas doradas para transiciones (se generan con alturas y retrasos distintos)
+function mkDrips(layer, n, sd) {
+  let s = sd; const r = () => (s = (s * 48271) % 2147483647) / 2147483647;
+  const w = 1080 / n;
+  return Array.from({ length: n }, (_, i) => {
+    const el = document.createElement('div'); el.className = 'drip';
+    el.style.left = `${i * w - 2}px`; el.style.width = `${w + 4}px`;
+    layer.appendChild(el);
+    return { el, d: r() * .22, extra: r() * 260 };
+  });
+}
+const DA = mkDrips($('dripA'), 9, 5), DB = mkDrips($('dripB'), 9, 17);
+// k: 0 = arriba fuera de cuadro, 1 = cubre todo
+function drips(list, t, s, dur) {
+  list.forEach(d => {
+    const k = eIn(p(t, s + d.d, s + d.d + dur));
+    d.el.style.transform = `translateY(${-2300 + (2300 + d.extra) * k}px)`;
+  });
+}
+
+const MSG = 'Hola, quiero merch para mi negocio';
 
 // ---------- render(t) ----------
 function render(t) {
-  // Escena 1
-  if (scene('s1', t, 0, 3.7)) {
-    const out = eIn(p(t, 2.65, 3.1));
-    maskLine($('s1a'), t, .15, 2.6);
-    const m = eBack(p(t, .45, 1.0));
-    S($('s1b').firstElementChild, { s: lerp(1.7, 1, m) * (1 + .04 * p(t, 1, 2.6)), o: clamp(m * 1.5), b: 24 * (1 - eOut(p(t, .45, .9))), y: -260 * out });
-    S($('s1bar'), { sx: eOut(p(t, .9, 1.3)) * (1 - out), sy: 1 });
-    S($('s1ring'), { s: eBack(p(t, 1.1, 1.55)) * (1 - out), r: t * 50 });
-    S($('s1top'), { o: eOut(p(t, 1.2, 1.6)) * (1 - out), y: 20 * (1 - eOut(p(t, 1.2, 1.6))) });
-    S($('s1bot'), { o: eOut(p(t, 1.35, 1.75)) * (1 - out), y: -20 * (1 - eOut(p(t, 1.35, 1.75))) });
-  }
-  // Transición 1 → círculo óxido
-  const w1 = eIO(p(t, 2.9, 3.5));
-  $('w1').style.display = t < 7.5 && w1 > 0 ? 'block' : 'none';
-  S($('w1c'), { s: w1 });
+  // grano de película: cambia en cada cuadro
+  const f = Math.floor(t * 30);
+  $('grain').style.transform = `translate(${(f * 73) % 200}px,${(f * 131) % 200}px)`;
 
-  // Escena 2
-  if (scene('s2', t, 3.1, 7.4)) {
-    const bIn = eBack(p(t, 3.45, 3.9)), bOut = eIn(p(t, 4.95, 5.25));
-    S($('s2bulb'), { s: bIn * (1 - bOut), r: -20 * bOut + Math.sin(t * 3) * 3 });
-    const tIn = eBack(p(t, 5.15, 5.6));
-    S($('s2tee'), { s: tIn, r: (1 - tIn) * 30 + Math.sin(t * 3) * 2 });
-    const glow = clamp(eOut(p(t, 3.7, 4.1)) - bOut + eOut(p(t, 5.4, 5.8)));
-    S($('s2rays'), { s: .8 + .2 * glow + .03 * Math.sin(t * 8), r: t * 25, o: glow });
-    maskLine($('s2a'), t, 3.55, 4.85);
-    maskLine($('s2b'), t, 3.7, 4.95);
-    maskLine($('s2c'), t, 5.2, null);
-    maskLine($('s2d'), t, 5.32, null);
-    S($('s2hl'), { sx: eOut(p(t, 5.55, 5.95)), sy: 1 });
-    maskLine($('s2e'), t, 5.6, null);
+  // 1 · Hook con cortes rápidos al ritmo (0.5 s)
+  if (scene('s1', t, 0, 3.2)) {
+    const cut = t < .5 ? 0 : t < 1.0 ? 1 : t < 1.5 ? 2 : 0;
+    [0, 1, 2].forEach(i => { $(`s1p${i}`).style.display = i === cut ? 'block' : 'none'; });
+    const c0 = t < .5 ? 0 : t < 1 ? .5 : t < 1.5 ? 1 : 1.5;
+    kb($(`s1p${cut}`), cut === 0 && t >= 1.5 ? 1.1 - .06 * eOut(p(t, 1.5, 3.1)) : 1.16 - .1 * eOut(p(t, c0, c0 + .45)));
+    S($('s1logo'), { o: eOut(p(t, .1, .4)), y: -30 * (1 - eOut(p(t, .1, .4))) });
+    maskLine($('s1a'), t, .1);
+    const m = eBack(p(t, 1.5, 1.9));
+    const shake = t > 1.5 && t < 1.8 ? Math.sin(t * 90) * 10 * (1 - p(t, 1.5, 1.8)) : 0;
+    S($('s1b').firstElementChild, { s: lerp(2.2, 1, m), o: clamp(m * 2), b: 18 * (1 - eOut(p(t, 1.5, 1.75))), x: shake });
   }
-  const w2 = eIO(p(t, 6.75, 7.2));
-  $('w2').style.display = t < 12.9 && w2 > 0 ? 'block' : 'none';
-  S($('w2c'), { yp: 100 * (1 - w2) });
+  // gotas doradas: bajan y cubren (2.55–3.1) y siguen hacia abajo destapando la escena 2
+  const onA = t > 2.5 && t < 3.7;
+  $('dripA').style.display = onA ? 'block' : 'none';
+  if (onA) {
+    if (t < 3.15) drips(DA, t, 2.5, .45);
+    else DA.forEach(d => { d.el.style.transform = `translateY(${d.extra + 2300 * eIn(p(t, 3.15 + d.d * .5, 3.6 + d.d * .5))}px)`; });
+  }
 
-  // Escena 3
-  if (scene('s3', t, 6.9, 13.0)) {
-    maskLine($('s3a'), t, 7.1, null);
-    S($('s3disc'), { s: eBack(p(t, 7.15, 7.6)) * (1 + .02 * Math.sin(t * 4)) });
-    WORDS.forEach((d, i) => {
-      const next = WORDS[i + 1] ? WORDS[i + 1].t - .05 : null;
-      maskLine($(`s3w${i}`), t, d.t, next);
-      const ii = eBack(p(t, d.t + .05, d.t + .5)), oo = next == null ? 0 : eIn(p(t, next, next + .25));
-      S($(`s3i${i}`), { s: ii * (1 - oo), r: (1 - ii) * -40 + oo * 40 + Math.sin(t * 5) * 4 });
-      const fill = next == null ? p(t, d.t, d.t + 1.3) : p(t, d.t, next);
-      S($(`s3p${i}`), { sx: fill, sy: 1 });
+  // 2 · Boceto → foto real
+  if (scene('s2', t, 3.1, 8.0)) {
+    const exit = eIO(p(t, 7.5, 7.9));
+    $('s2').style.transform = `translateY(${-500 * exit}px)`;
+    document.querySelectorAll('#s2sketch .draw').forEach((el, i) => {
+      el.style.strokeDashoffset = 1 - eIO(p(t, 3.35 + i * .18, 4.25 + i * .18));
+      if (!el.getAttribute('stroke-dasharray')) el.style.strokeDasharray = 1;
     });
-    const ct = t - 11.35;
+    const rev = eIO(p(t, 5.0, 5.55));
+    $('s2card').style.clipPath = `circle(${rev * 1400}px at 430px 470px)`;
+    kb($('s2card'), 1.18 - .14 * eOut(p(t, 5.0, 7.9)));
+    S($('s2sketch'), { s: 1 + .25 * eIn(p(t, 5.0, 5.45)), o: 1 - p(t, 5.05, 5.4) });
+    S($('s2grid'), { o: 1 - .6 * rev });
+    maskLine($('s2a'), t, 3.5, 4.85);
+    maskLine($('s2b'), t, 3.65, 4.95);
+    maskLine($('s2c'), t, 5.35);
+    maskLine($('s2d'), t, 5.5);
+    const r = eBack(p(t, 5.7, 6.15));
+    S($('s2e').firstElementChild, { s: lerp(1.6, 1, r), o: clamp(r * 2) });
+  }
+
+  // 3 · PARA TU … (sube desde abajo)
+  if (scene('s3', t, 7.5, 14.0)) {
+    const enter = eIO(p(t, 7.5, 7.9)), exit = eIO(p(t, 13.45, 13.85));
+    $('s3').style.transform = `translate(${-1080 * exit}px,${1920 * (1 - enter)}px)`;
+    maskLine($('s3a'), t, 7.75);
+    WORDS.forEach((d, i) => {
+      const start = i === 0 ? 7.5 : d.t, next = WORDS[i + 1] ? WORDS[i + 1].t : 99;
+      const on = t >= start && t < next;
+      $(`s3p${i}`).style.display = on ? 'block' : 'none';
+      if (on) kb($(`s3p${i}`), i === 0 ? 1.12 - .1 * eOut(p(t, 7.5, 9.2)) : 1.14 - .08 * eOut(p(t, d.t, d.t + .5)) - .04 * p(t, d.t + .5, next));
+      maskLine($(`s3w${i}`), t, d.t, WORDS[i + 1] ? next - .25 : null, .35);
+      S($(`s3g${i}`), { sx: p(t, d.t, i < 3 ? next : 13.45), sy: 1 });
+    });
+    const ct = t - 12.1;
     CONF.forEach((c, i) => {
       const el = $(`cf${i}`);
       if (ct < 0) { el.style.opacity = 0; return; }
-      const k = eOut(clamp(ct / 1.2));
-      S(el, { x: Math.cos(c.a) * c.v * k, y: Math.sin(c.a) * c.v * k + 380 * ct * ct, r: c.r * ct, o: 1 - p(ct, 1.0, 1.5) });
+      const k = eOut(clamp(ct / 1.1));
+      S(el, { x: Math.cos(c.a) * c.v * k * .6, y: Math.sin(c.a) * c.v * k + 520 * ct * ct, r: c.r * ct, o: 1 - p(ct, 1.0, 1.4) });
     });
   }
-  const w3 = eIO(p(t, 12.45, 12.95));
-  $('w3').style.display = t < 16.5 && w3 > 0 ? 'block' : 'none';
-  S($('w3c'), { s: w3 });
 
-  // Escena 4
-  if (scene('s4', t, 12.8, 16.4)) {
-    maskLine($('s4a'), t, 12.85, null);
-    const m = eBack(p(t, 13.0, 13.5));
-    S($('s4b').firstElementChild, { s: lerp(.6, 1, m), o: clamp(m * 2) });
-    S($('s4c'), { o: eOut(p(t, 13.55, 13.95)), y: 20 * (1 - eOut(p(t, 13.55, 13.95))) });
-    PRODS.forEach((d, i) => {
-      const k = eBack(p(t, 13.1 + i * .12, 13.7 + i * .12));
-      S($(`s4p${i}`), {
-        x: d.from[0] * (1 - k), y: d.from[1] * (1 - k) + Math.sin(t * 2.4 + i * 1.7) * 14,
-        r: d.r + (1 - k) * 160 + Math.sin(t * 1.8 + i) * 4, o: clamp(k * 2),
-      });
+  // 4 · Productos (entra empujando hacia la izquierda)
+  if (scene('s4', t, 13.45, 17.75)) {
+    $('s4').style.transform = `translateX(${1080 * (1 - eIO(p(t, 13.45, 13.85)))}px)`;
+    maskLine($('s4a'), t, 13.8);
+    const m = eBack(p(t, 13.95, 14.4));
+    S($('s4b').firstElementChild, { s: lerp(.5, 1, m), o: clamp(m * 2) });
+    TILES.forEach((d, i) => {
+      const k = eBack(p(t, 14.2 + i * .15, 14.7 + i * .15));
+      S($(`s4t${i}`), { s: lerp(.6, 1, k), o: clamp(k * 2), r: d.r + (1 - k) * (i % 2 ? 12 : -12), y: 120 * (1 - k) });
+      kb($(`s4t${i}`), 1.15 - .12 * eOut(p(t, 14.2 + i * .15, 17.5)));
+      const c = eBack(p(t, 14.7 + i * .15, 15.05 + i * .15));
+      S($(`s4c${i}`), { s: c, o: clamp(c * 2) });
     });
+    S($('s4tech'), { o: eOut(p(t, 15.4, 15.8)), y: 24 * (1 - eOut(p(t, 15.4, 15.8))) });
   }
-  const w4 = eIO(p(t, 15.85, 16.35));
-  $('w4').style.display = t < 19.7 && w4 > 0 ? 'block' : 'none';
-  S($('w4c'), { r: 24, x: lerp(2700, 0, w4) });
+  const onB = t > 17.2 && t < 17.8;
+  $('dripB').style.display = onB ? 'block' : 'none';
+  if (onB) drips(DB, t, 17.2, .45);
 
-  // Escena 5
-  if (scene('s5', t, 16.2, 19.7)) {
-    const c = eBack(p(t, 16.3, 16.8));
-    S($('s5card'), { y: 200 * (1 - c), o: clamp(c * 2), s: lerp(.9, 1, c) });
-    const n = Math.round(MSG.length * p(t, 16.75, 17.45));
+  // 5 · Mándanos un mensaje
+  if (scene('s5', t, 17.75, 21.6)) {
+    const c = eBack(p(t, 17.8, 18.3));
+    S($('s5card'), { y: 220 * (1 - c), o: clamp(c * 2), s: lerp(.9, 1, c) });
+    const n = Math.round(MSG.length * p(t, 18.2, 18.9));
     $('s5b1').textContent = MSG.slice(0, n) || ' ';
-    S($('s5b1'), { o: n ? 1 : 0, s: n ? 1 : .8 });
-    const dotsOn = t > 17.55 && t < 18.25;
-    S($('s5dots'), { o: dotsOn ? eOut(p(t, 17.55, 17.7)) : 0 });
+    S($('s5b1'), { o: n ? 1 : 0 });
+    const dotsOn = t > 19.0 && t < 19.6;
+    S($('s5dots'), { o: dotsOn ? eOut(p(t, 19.0, 19.15)) : 0 });
     [...$('s5dots').children].forEach((d, i) => S(d, { y: -10 * Math.max(0, Math.sin(t * 12 - i * .9)) }));
-    const r2 = eBack(p(t, 18.25, 18.6));
-    S($('s5b2'), { s: r2, o: clamp(r2 * 2) });
+    const r2 = eBack(p(t, 19.6, 19.95));
     $('s5b2').style.transformOrigin = 'left bottom';
-    maskLine($('s5a'), t, 16.45, null);
-    maskLine($('s5b'), t, 16.6, null);
-    const sd = eBack(p(t, 17.0, 17.4));
-    S($('s5send'), { s: sd * (1 + .05 * Math.sin(t * 6)), x: 22 * Math.max(0, Math.sin(t * 3)), r: -10 });
+    S($('s5b2'), { s: r2, o: clamp(r2 * 2) });
+    maskLine($('s5a'), t, 18.0);
+    maskLine($('s5b'), t, 18.15);
+    const pl = eBack(p(t, 18.5, 18.9));
+    S($('s5pill'), { s: pl * (1 + .03 * Math.max(0, Math.sin((t - 19) * 6))), o: clamp(pl * 2) });
+    S($('s5ig'), { o: eOut(p(t, 18.8, 19.2)), y: 20 * (1 - eOut(p(t, 18.8, 19.2))) });
   }
-  const w5 = eIO(p(t, 19.0, 19.6));
-  $('w5').style.display = w5 > 0 ? 'block' : 'none';
+  const w5 = eIO(p(t, 21.0, 21.6));
+  $('w5').style.display = w5 > 0 && t < 21.7 ? 'block' : 'none';
   S($('w5c'), { s: w5 });
 
-  // Escena 6
-  if (scene('s6', t, 19.3, T + 1)) {
-    const d = eBack(p(t, 19.45, 19.95));
-    S($('s6disc'), { s: d });
-    S($('s6mh'), { s: eBack(p(t, 19.7, 20.15)), r: (1 - eOut(p(t, 19.7, 20.15))) * -25 });
-    S($('s6ring'), { s: eOut(p(t, 19.8, 20.4)), o: eOut(p(t, 19.8, 20.4)), r: t * -30 });
-    S($('s6somos'), { o: eOut(p(t, 20.0, 20.4)), y: 20 * (1 - eOut(p(t, 20.0, 20.4))) });
-    maskLine($('s6name'), t, 20.15, null, .5);
-    $('s6name').firstElementChild.style.letterSpacing = `${lerp(14, -2, eOut(p(t, 20.15, 20.9)))}px`;
-    S($('s6tag'), { o: eOut(p(t, 20.6, 21.0)), y: 24 * (1 - eOut(p(t, 20.6, 21.0))) });
-    const cta = eBack(p(t, 20.9, 21.35));
-    S($('s6cta'), { s: cta * (1 + .03 * Math.max(0, Math.sin((t - 21.4) * 5))), o: clamp(cta * 2) });
+  // 6 · Cierre con logo
+  if (scene('s6', t, 21.6, T + 1)) {
+    const k = eOut(p(t, 21.7, 22.5));
+    $('s6logo').style.clipPath = `inset(0 0 ${100 - 100 * k}% 0)`;
+    S($('s6logo'), { y: -40 * (1 - k), s: lerp(.94, 1, k) });
+    S($('s6glow'), { o: eOut(p(t, 22.0, 22.8)) * (.8 + .2 * Math.sin(t * 3)), s: 1 + .04 * Math.sin(t * 2) });
+    maskLine($('s6a'), t, 22.4);
+    maskLine($('s6b'), t, 22.55);
+    [['s6wa', 22.9], ['s6ig', 23.1], ['s6tech', 23.4]].forEach(([id, s]) =>
+      S($(id), { o: eOut(p(t, s, s + .4)), y: 30 * (1 - eOut(p(t, s, s + .4))) }));
   }
 }
 
-// ---------- modos ----------
-window.render = render; window.DURATION = T;
+// ---------- ajuste de textos y carga ----------
+function fitLines() {
+  document.querySelectorAll('.line[data-max]').forEach(el => {
+    const sp = el.firstElementChild, max = +el.dataset.max, w = sp.getBoundingClientRect().width / (window.__k || 1);
+    if (w > max) el.style.fontSize = `${parseFloat(getComputedStyle(el).fontSize) * max / w}px`;
+  });
+}
 const isRender = new URLSearchParams(location.search).has('render');
-function fit() { const k = isRender ? 1 : Math.min(innerWidth / 1080, innerHeight / 1920); $('stage').style.transform = `scale(${k})`; }
+function fit() { window.__k = isRender ? 1 : Math.min(innerWidth / 1080, innerHeight / 1920); $('stage').style.transform = `scale(${window.__k})`; }
 addEventListener('resize', fit); fit();
-if (!isRender) {
+
+window.render = render; window.DURATION = T;
+window.READY = Promise.all([
+  document.fonts.load('100px Anton'),
+  ...Object.values(IMG).map(i => { const im = new Image(); im.src = i.src; return im.decode(); }),
+  ...[...document.images].map(im => im.decode().catch(() => {})),
+]).then(() => { fitLines(); render(0); });
+
+if (!isRender) window.READY.then(() => {
   const t0 = performance.now();
   const loop = now => { render(((now - t0) / 1000) % T); requestAnimationFrame(loop); };
   requestAnimationFrame(loop);
-} else render(0);
+});
 </script>
 </body>
 </html>

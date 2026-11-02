@@ -5,13 +5,13 @@ const { spawn } = require('child_process');
 const path = require('path');
 
 const FPS = 30;
-const out = process.argv[2] || path.join(__dirname, 'mh-branding-merch.mp4');
+const out = process.argv[2] || path.join(__dirname, 'mh-branding-merch-v2.mp4');
 
 (async () => {
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1080, height: 1920 } });
   await page.goto('file://' + path.join(__dirname, 'index.html') + '?render=1');
-  await page.evaluate(() => document.fonts.ready);
+  await page.evaluate(() => window.READY);
   const duration = await page.evaluate(() => window.DURATION);
   const frames = Math.round(duration * FPS);
 
