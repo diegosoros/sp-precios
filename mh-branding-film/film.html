@@ -1,0 +1,874 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>viste. — MH Branding</title>
+<style>
+  @font-face{font-family:Archivo;src:url(assets/fonts/Archivo-var.woff2) format('woff2');font-weight:100 900;font-stretch:62% 125%;font-display:block}
+  @font-face{font-family:Geist;src:url(assets/fonts/Geist-var.woff2) format('woff2');font-weight:100 900;font-display:block}
+  :root{--canvas:#F2EEE6;--ink:#0B0B0B}
+  html,body{margin:0;height:100%;background:#000;overflow:hidden}
+  body{display:flex;align-items:center;justify-content:center}
+  #stage{position:relative;flex:none;width:1440px;height:1440px;overflow:hidden;background:var(--canvas);font-family:Geist,sans-serif;color:var(--ink);transform-origin:center}
+  #world{position:absolute;left:0;top:0;width:1440px;height:1440px;transform-origin:0 0}
+  .a{position:absolute;left:0;top:0;box-sizing:border-box}
+  .ph{background-repeat:no-repeat;overflow:hidden}
+  .wm{position:absolute;font-family:Archivo;font-size:300px;line-height:300px;white-space:nowrap;transform-origin:0 0}
+  .mask{position:absolute;overflow:hidden;white-space:nowrap}
+  .mask>span{display:inline-block}
+  .rim{position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+    box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.55),inset 0 2px 1px rgba(255,255,255,.65),inset 0 -2px 4px rgba(0,0,0,.18);
+    background:linear-gradient(155deg,rgba(255,255,255,.30),rgba(255,255,255,0) 38%,rgba(255,255,255,0) 72%,rgba(255,255,255,.14))}
+  .spec{position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+    background:radial-gradient(ellipse 60% 38% at 32% 16%,rgba(255,255,255,.55),rgba(255,255,255,0) 70%),radial-gradient(ellipse 50% 30% at 72% 92%,rgba(255,255,255,.22),rgba(255,255,255,0) 70%)}
+  .ic{fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs id="defs">
+    <filter id="goo" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="13" result="b"/>
+      <feColorMatrix in="b" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 30 -12" result="g"/>
+      <feComposite in="SourceGraphic" in2="g" operator="atop"/>
+    </filter>
+  </defs>
+</svg>
+<div id="stage"><div id="world"></div></div>
+<script>
+// =====================================================================
+// viste. — película de lanzamiento (1440×1440, 120 BPM, 54 beats)
+// Todo se calcula a partir de t dentro de seek(t): sin transiciones, sin timers, sin estado entre cuadros.
+// =====================================================================
+const S = 1440, DUR = 27, B = n => (n - 1) * .5;   // B(n) = inicio del beat n
+const $ = id => document.getElementById(id);
+const world = $('world'), defs = $('defs');
+
+// ---------- matemáticas ----------
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, k) => a + (b - a) * k;
+const p = (t, a, b) => clamp((t - a) / (b - a));
+const eIO = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const eIn = x => x * x * x;
+const eOut = x => 1 - Math.pow(1 - x, 3);
+// respuesta al escalón de un resorte (forma cerrada)
+function spring(dt, w = 14, z = .72) {
+  if (dt <= 0) return 0;
+  if (z >= 1) return 1 - Math.exp(-w * dt) * (1 + w * dt);
+  const wd = w * Math.sqrt(1 - z * z);
+  return 1 - Math.exp(-z * w * dt) * (Math.cos(wd * dt) + (z * w / wd) * Math.sin(wd * dt));
+}
+// valor con varios destinos = suma de un resorte por cambio → función pura de t
+// keys: [[t, valor], [t, valor, w?, z?], ...]  (valor: número o arreglo)
+function sp(t, keys) {
+  const v0 = keys[0][1], arr = Array.isArray(v0);
+  let out = arr ? v0.slice() : v0;
+  for (let i = 1; i < keys.length; i++) {
+    const [ti, vi, w = 14, z = .72] = keys[i], prev = keys[i - 1][1], s = spring(t - ti, w, z);
+    if (arr) for (let j = 0; j < out.length; j++) out[j] += (vi[j] - prev[j]) * s; else out += (vi - prev) * s;
+  }
+  return out;
+}
+// interpolación por tramos con easing: segs [[t0, t1, valor, ease?], ...]
+function tw(t, init, segs) {
+  let cur = Array.isArray(init) ? init.slice() : init;
+  for (const [a, b, v, ease = eIO] of segs) {
+    if (t >= b) { cur = Array.isArray(v) ? v.slice() : v; continue; }
+    if (t > a) { const k = ease(p(t, a, b)); cur = Array.isArray(v) ? cur.map((c, j) => lerp(c, v[j], k)) : lerp(cur, v, k); }
+    break;
+  }
+  return cur;
+}
+
+// ---------- DOM ----------
+function div(parent = world, cls = 'a', css = {}, html = '') {
+  const e = document.createElement('div'); e.className = cls; Object.assign(e.style, css); if (html) e.innerHTML = html; parent.appendChild(e); return e;
+}
+const px = v => `${v}px`;
+function rect(el, [x, y, w, h], r) {
+  const s = el.style; s.left = px(x); s.top = px(y); s.width = px(Math.max(0, w)); s.height = px(Math.max(0, h));
+  if (r != null) s.borderRadius = px(Math.max(0, Math.min(r, w / 2, h / 2)));
+}
+const vis = (el, on) => { el.style.visibility = on ? 'inherit' : 'hidden'; };
+const xf = (el, s) => { el.style.transform = s; };
+function mask(parent, x, y, w, h, html, css = {}) {
+  const m = div(parent, 'mask', { left: px(x), top: px(y), width: px(w), height: px(h), ...css });
+  const s = document.createElement('span'); s.innerHTML = html; m.appendChild(s); return m;
+}
+// texto que sube desde la línea de máscara y sale hacia arriba
+function rise(m, t, tin, tout = null) {
+  const k = spring(t - tin, 16, .82), o = tout == null ? 0 : eIn(p(t, tout, tout + .22));
+  xf(m.firstChild, `translateY(${(1 - k) * 112 - o * 112}%)`);
+  vis(m, t >= tin && (tout == null || t < tout + .22));
+}
+
+// ---------- fotos ----------
+const IM = {
+  n11: ['assets/img/n11.jpg', 1254, 1254], n12: ['assets/img/n12.jpg', 1278, 1230], n13: ['assets/img/n13.jpg', 1278, 1230],
+  n14: ['assets/img/n14.jpg', 1440, 1268], n15: ['assets/img/n15.jpg', 1122, 1402], n15g: ['assets/img/n15-golden.jpg', 1122, 1402],
+  p2: ['assets/img/p2.jpg', 1122, 1402], p3: ['assets/img/p3.jpg', 1122, 1402], p4: ['assets/img/p4.jpg', 1254, 1254],
+  p5: ['assets/img/p5.jpg', 1254, 1254], p8: ['assets/img/p8.jpg', 1122, 1402],
+};
+// capa "cover": el recorte crop llena el rect (coordenadas del mundo)
+function cover(key, [cx, cy, cw, ch], [x, y, w, h], extra = {}) {
+  const [src, IW, IH] = IM[key], k = Math.max(w / cw, h / ch);
+  return { src, bx: x - cx * k + (w - cw * k) / 2, by: y - cy * k + (h - ch * k) / 2, bw: IW * k, bh: IH * k, ...extra };
+}
+const lerpCrop = (a, b, k) => a.map((v, i) => lerp(v, b[i], k));
+// pinta una lista de capas dentro de un contenedor; map: rect del mundo → rect local
+function paint(cont, layers, map) {
+  while (cont.children.length < layers.length) { const d = div(cont, 'a'); d.style.backgroundRepeat = 'no-repeat'; d.style.backgroundSize = '100% 100%'; }
+  [...cont.children].forEach((d, i) => {
+    const L = layers[i];
+    if (!L) { d.style.display = 'none'; return; }
+    d.style.display = 'block';
+    const [lx, ly, lw, lh] = map(L.bx, L.by, L.bw, L.bh), k = lw / L.bw;
+    rect(d, [lx, ly, lw, lh]);
+    if (d._src !== L.src) { d.style.backgroundImage = `url(${L.src})`; d._src = L.src; }
+    if (L.clip) { const [x0, y0, x1, y1] = L.clip; d.style.clipPath = `inset(${(y0 - L.by) * k}px ${(L.bx + L.bw - x1) * k}px ${(L.by + L.bh - y1) * k}px ${(x0 - L.bx) * k}px round ${(L.round || 0) * k}px)`; }
+    else if (L.circle) { const { cx, cy, r } = L.circle; d.style.clipPath = `circle(${Math.max(0, r) * k}px at ${(cx - L.bx) * k}px ${(cy - L.by) * k}px)`; }
+    else d.style.clipPath = '';
+  });
+}
+const shift = (ox, oy) => (x, y, w, h) => [x - ox, y - oy, w, h];
+// foto en un elemento (sin vidrio)
+function photo(el, L, r) { paint(el, [L], shift(parseFloat(el.style.left) || 0, parseFloat(el.style.top) || 0)); }
+
+// ---------- vidrio líquido ----------
+// mapa de desplazamiento (campo de distancia de un rectángulo redondeado); resolución tope 384 px, se estira con feImage
+const MAPS = new Map();
+function rrMap(w, h, r, band) {
+  const k = Math.min(1, 384 / Math.max(w, h)), mw = Math.max(8, Math.round(w * k / 8) * 8), mh = Math.max(8, Math.round(h * k / 8) * 8);
+  const mr = Math.min(Math.round(r * k / 4) * 4, mw / 2, mh / 2), mb = Math.max(4, Math.round(band * k / 4) * 4), key = `${mw}x${mh}r${mr}b${mb}`;
+  if (MAPS.has(key)) return MAPS.get(key);
+  const c = document.createElement('canvas'); c.width = mw; c.height = mh;
+  const g = c.getContext('2d'), id = g.createImageData(mw, mh), hx = mw / 2, hy = mh / 2;
+  for (let y = 0; y < mh; y++) for (let x = 0; x < mw; x++) {
+    const qx = Math.abs(x + .5 - hx) - (hx - mr), qy = Math.abs(y + .5 - hy) - (hy - mr);
+    const d = Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - mr;
+    let nx = 0, ny = 0;
+    if (qx > 0 && qy > 0) { const l = Math.hypot(qx, qy); nx = qx / l; ny = qy / l; } else if (qx > qy) nx = 1; else ny = 1;
+    nx *= Math.sign(x + .5 - hx) || 1; ny *= Math.sign(y + .5 - hy) || 1;
+    const e = -d, tt = clamp(1 - e / mb), m = e < 0 ? 0 : tt * tt, i = (y * mw + x) * 4;
+    id.data[i] = 128 - nx * m * 127; id.data[i + 1] = 128 - ny * m * 127; id.data[i + 2] = 128; id.data[i + 3] = 255;
+  }
+  g.putImageData(id, 0, 0);
+  const url = c.toDataURL(); MAPS.set(key, url); return url;
+}
+let FID = 0;
+const CH = c => `<feDisplacementMap in="SourceGraphic" in2="m" scale="1" xChannelSelector="R" yChannelSelector="G" result="d${c}"/>
+  <feColorMatrix in="d${c}" type="matrix" values="${c == 'r' ? 1 : 0} 0 0 0 0  0 ${c == 'g' ? 1 : 0} 0 0 0  0 0 ${c == 'b' ? 1 : 0} 0 0  0 0 0 1 0" result="${c}"/>`;
+function mkFilter() {
+  const id = `lg${FID++}`;
+  defs.insertAdjacentHTML('beforeend', `<filter id="${id}" x="0" y="0" width="10" height="10" filterUnits="userSpaceOnUse" primitiveUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+    <feImage x="0" y="0" width="10" height="10" preserveAspectRatio="none" result="m"/>${CH('r')}${CH('g')}${CH('b')}
+    <feBlend in="r" in2="g" mode="screen" result="rg"/><feBlend in="rg" in2="b" mode="screen" result="rgb"/><feColorMatrix in="rgb" type="saturate" values="1.3"/></filter>`);
+  const f = $(id); return { id, f, img: f.querySelector('feImage'), dm: [...f.querySelectorAll('feDisplacementMap')] };
+}
+let PENDING = [];   // feImage que cambiaron este cuadro (se espera su carga antes de capturar)
+function setMap(F, url, w, h, scale) {
+  F.f.setAttribute('width', w); F.f.setAttribute('height', h); F.img.setAttribute('width', w); F.img.setAttribute('height', h);
+  if (F.url !== url) { F.img.setAttribute('href', url); F.url = url; PENDING.push(url); }
+  F.dm.forEach((d, i) => d.setAttribute('scale', scale * [1, 1.07, 1.14][i]));
+}
+// elemento de vidrio: tiene su propia copia de la escena detrás, filtrada con el mapa
+class Glass {
+  constructor(parent, { tint = 'rgba(255,255,255,.10)', spec = false, shadow = '0 18px 44px rgba(0,0,0,.22)' } = {}) {
+    this.F = mkFilter();
+    this.el = div(parent, 'a', { overflow: 'hidden', boxShadow: shadow });
+    this.clone = div(this.el, 'a', { overflow: 'hidden', filter: `url(#${this.F.id})` });
+    this.inner = div(this.clone, 'a', { transformOrigin: 'center' });
+    this.tint = div(this.el, 'a', { inset: 0, width: '100%', height: '100%', background: tint });
+    if (spec) div(this.el, 'spec');
+    div(this.el, 'rim');
+  }
+  set(on, [x, y, w, h], r, layers, { scale = 60, band = null, zoom = 1 } = {}) {
+    if (!on || w < 3 || h < 3) { vis(this.el, false); return; }
+    vis(this.el, true);
+    rect(this.el, [x, y, w, h], r); rect(this.clone, [0, 0, w, h]); rect(this.inner, [0, 0, w, h]);
+    xf(this.inner, `scale(${zoom})`);
+    setMap(this.F, rrMap(w, h, Math.min(r, w / 2, h / 2), band ?? Math.min(w, h) * .32), w, h, scale);
+    paint(this.inner, layers, shift(x, y));
+  }
+}
+// glifo de vidrio: el campo de distancia del glifo da el mapa, la máscara y los brillos
+class GlassGlyph {
+  constructor(parent, ch, font, { blur = 8, pad = 40, tint = 'rgba(255,255,255,.16)', scale = 34, spacing = 0 } = {}) {
+    const m = document.createElement('canvas').getContext('2d'); m.font = font; if (font.includes('Archivo')) m.fontStretch = 'expanded';
+    const mt = m.measureText(ch);
+    this.adv = mt.width; this.asc = mt.fontBoundingBoxAscent; this.desc = mt.fontBoundingBoxDescent;
+    const w = Math.ceil(mt.width + 2 * pad), h = Math.ceil(this.asc + this.desc + 2 * pad); this.w = w; this.h = h; this.pad = pad;
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const g = c.getContext('2d'); g.font = font; if (font.includes('Archivo')) g.fontStretch = 'expanded'; g.fillStyle = '#fff'; g.textBaseline = 'alphabetic';
+    g.fillText(ch, pad, pad + this.asc);
+    const maskURL = c.toDataURL();
+    const fc = document.createElement('canvas'); fc.width = w; fc.height = h;
+    const fg = fc.getContext('2d'); fg.filter = `blur(${blur}px)`; fg.drawImage(c, 0, 0);
+    const A = fg.getImageData(0, 0, w, h).data, a = (x, y) => A[(clamp(y, 0, h - 1) * w + clamp(x, 0, w - 1)) * 4 + 3] / 255;
+    const map = fg.createImageData(w, h), hi = fg.createImageData(w, h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const gx = a(x + 1, y) - a(x - 1, y), gy = a(x, y + 1) - a(x, y - 1), len = Math.hypot(gx, gy) || 1e-6;
+      const nx = gx / len, ny = gy / len, mm = clamp(len * blur * 1.3), v = a(x, y), edge = clamp(4 * v * (1 - v)), L = nx * .55 + ny * .83, i = (y * w + x) * 4;
+      map.data[i] = 128 + nx * mm * 127; map.data[i + 1] = 128 + ny * mm * 127; map.data[i + 2] = 128; map.data[i + 3] = 255;
+      hi.data[i] = hi.data[i + 1] = hi.data[i + 2] = 255; hi.data[i + 3] = 255 * edge * clamp(.18 + .9 * Math.max(0, L) + .35 * Math.max(0, -L));
+    }
+    fg.filter = 'none'; fg.putImageData(map, 0, 0); const mapURL = fc.toDataURL(); fg.putImageData(hi, 0, 0); const hiURL = fc.toDataURL();
+    this.F = mkFilter(); setMap(this.F, mapURL, w, h, scale);
+    this.el = div(parent, 'a', { width: px(w), height: px(h), WebkitMaskImage: `url(${maskURL})`, WebkitMaskSize: '100% 100%', transformOrigin: 'center' });
+    this.clone = div(this.el, 'a', { width: px(w), height: px(h), overflow: 'hidden', filter: `url(#${this.F.id})` });
+    div(this.el, 'a', { width: px(w), height: px(h), background: tint });
+    div(this.el, 'a', { width: px(w), height: px(h), backgroundImage: `url(${hiURL})`, backgroundSize: '100% 100%' });
+    this.shadow = div(parent, 'a', { width: px(w), height: px(h), WebkitMaskImage: `url(${maskURL})`, WebkitMaskSize: '100% 100%', background: 'rgba(0,0,0,.22)', transformOrigin: 'center' });
+    parent.insertBefore(this.shadow, this.el);
+  }
+  // (cx, cy) = centro del avance del glifo sobre la línea media; s = escala
+  set(on, cx, cy, s, layers) {
+    if (!on || s < .01) { vis(this.el, false); vis(this.shadow, false); return; }
+    vis(this.el, true); vis(this.shadow, true);
+    const x = cx - this.w / 2, y = cy - this.h / 2;
+    rect(this.el, [x, y, this.w, this.h]); xf(this.el, `scale(${s})`);
+    rect(this.shadow, [x + 3 * s, y + 6 * s, this.w, this.h]); xf(this.shadow, `scale(${s})`);
+    const gw = this.w, gh = this.h;
+    paint(this.clone, layers, (lx, ly, lw, lh) => [(lx - cx) / s + gw / 2, (ly - cy) / s + gh / 2, lw / s, lh / s]);
+  }
+}
+
+// ---------- iris de 6 aspas ----------
+// cada aspa = sus dos vértices, las dos prolongaciones de arista y el arco CORTO entre ellas
+class Iris {
+  constructor(parent, color = '#262626') {
+    this.svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); this.svg.setAttribute('class', 'a'); this.svg.style.overflow = 'visible';
+    this.paths = Array.from({ length: 6 }, () => { const pa = document.createElementNS('http://www.w3.org/2000/svg', 'path'); pa.setAttribute('fill', color); pa.setAttribute('stroke', '#4A4A4A'); pa.setAttribute('stroke-width', '2'); pa.setAttribute('stroke-linejoin', 'round'); this.svg.appendChild(pa); return pa; });
+    parent.appendChild(this.svg);
+  }
+  // k: 0 = cerrado, 1 = abierto. clip: [x,y,w,h] opcional (si no, círculo de radio R)
+  set(on, cx, cy, R, k, clip = null) {
+    if (!on || k >= 1) { vis(this.svg, false); return; }
+    vis(this.svg, true);
+    const R2 = R * 1.3, amax = R / Math.cos(Math.PI / 6) * 1.01, a = Math.max(.5, amax * clamp(k)), rot = -Math.PI / 2 + (1 - clamp(k)) * .7;
+    this.svg.setAttribute('width', 2 * R2); this.svg.setAttribute('height', 2 * R2); this.svg.setAttribute('viewBox', `${-R2} ${-R2} ${2 * R2} ${2 * R2}`);
+    this.svg.style.left = px(cx - R2); this.svg.style.top = px(cy - R2);
+    this.svg.style.clipPath = clip ? `inset(${clip[1] - (cy - R2)}px ${(cx + R2) - (clip[0] + clip[2])}px ${(cy + R2) - (clip[1] + clip[3])}px ${clip[0] - (cx - R2)}px)` : `circle(${R}px at ${R2}px ${R2}px)`;
+    const V = [...Array(6)].map((_, i) => [a * Math.cos(rot + i * Math.PI / 3), a * Math.sin(rot + i * Math.PI / 3)]);
+    const ray = (P, D) => { const b = P[0] * D[0] + P[1] * D[1], c = P[0] ** 2 + P[1] ** 2 - R2 * R2, dd = D[0] ** 2 + D[1] ** 2 || 1e-9; const s = (-b + Math.sqrt(Math.max(0, b * b - dd * c))) / dd; return [P[0] + s * D[0], P[1] + s * D[1]]; };
+    V.forEach((Vk, i) => {
+      const Vn = V[(i + 1) % 6], Vp = V[(i + 5) % 6];
+      const Q = ray(Vn, [Vn[0] - Vk[0], Vn[1] - Vk[1]]), P = ray(Vk, [Vk[0] - Vp[0], Vk[1] - Vp[1]]);
+      const a0 = Math.atan2(Q[1], Q[0]); let d = Math.atan2(P[1], P[0]) - a0; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
+      const pts = [Vk, Vn, Q]; for (let j = 1; j <= 14; j++) { const an = a0 + d * j / 14; pts.push([R2 * Math.cos(an), R2 * Math.sin(an)]); }
+      this.paths[i].setAttribute('d', 'M' + pts.map(q => `${q[0].toFixed(1)} ${q[1].toFixed(1)}`).join(' L') + 'Z');
+    });
+  }
+}
+
+// ---------- iconos ----------
+const svgI = (body, s = 40, sw = 2.2, vb = 24) => `<svg viewBox="0 0 ${vb} ${vb}" width="${s}" height="${s}" class="ic" style="stroke-width:${sw}">${body}</svg>`;
+const ICON = {
+  crop: '<path d="M6 2v16h16"/><path d="M2 6h16v16"/>',
+  adjust: '<path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2.2" fill="currentColor"/><circle cx="15" cy="12" r="2.2" fill="currentColor"/><circle cx="7" cy="18" r="2.2" fill="currentColor"/>',
+  wand: '<path d="M4 20L16 8"/><path d="M15 3v3M18 6h3M19.5 3.5l-2 2M12 5l1 1"/>',
+  heart: '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
+  share: '<path d="M12 3v12"/><path d="M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/>',
+  sun: '<circle cx="12" cy="12" r="4"/>' + [0, 45, 90, 135, 180, 225, 270, 315].map(a => `<line x1="12" y1="2.5" x2="12" y2="5" transform="rotate(${a} 12 12)"/>`).join(''),
+  sunset: '<path d="M6 16a6 6 0 0 1 12 0"/><line x1="2.5" y1="16" x2="21.5" y2="16"/><line x1="6" y1="20" x2="18" y2="20"/>' + [-60, -30, 0, 30, 60].map(a => `<line x1="12" y1="4.5" x2="12" y2="6.5" transform="rotate(${a} 12 16)"/>`).join(''),
+  play: '<path d="M8 5l11 7-11 7z" fill="currentColor" stroke="none"/>',
+  lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  back: '<path d="M15 5l-7 7 7 7"/>',
+  fwd: '<path d="M9 5l7 7-7 7"/>',
+};
+const CURSOR = `<svg width="40" height="56" viewBox="-2 -2 24 34"><path d="M0 0 L0 23 L6 17.5 L10 27 L14 25.2 L10 16 L18 16 Z" fill="#0B0B0B" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg>`;
+
+// =====================================================================
+// MONTAJE
+// =====================================================================
+const INK = '#0B0B0B';
+
+// ---------- 1 · wordmark ----------
+const WORD = 'viste', F = 300, YB = 720 + .27 * F;   // línea base
+const wmLayer = div(world, 'a', { width: '1440px', height: '1440px' });
+const WM = { letters: [], adv125: [], adv62: [] };
+function measureWord() {
+  const probe = div(document.body, 'a', { visibility: 'hidden' });
+  const meas = (ch, wd) => { const s = document.createElement('span'); s.textContent = ch; Object.assign(s.style, { fontFamily: 'Archivo', fontSize: px(F), fontVariationSettings: `'wdth' ${wd}, 'wght' 800`, whiteSpace: 'pre', display: 'inline-block' }); probe.appendChild(s); return s.getBoundingClientRect().width; };
+  [...WORD, '.'].forEach(ch => { WM.adv125.push(meas(ch, 125)); WM.adv62.push(meas(ch, 62)); });
+  probe.remove();
+  const c = document.createElement('canvas').getContext('2d'); c.font = `800 ${F}px Archivo`; c.fontStretch = 'expanded';
+  const m = c.measureText('.'), mm = c.measureText('v');
+  WM.baseOff = (F - (mm.fontBoundingBoxAscent + mm.fontBoundingBoxDescent)) / 2 + mm.fontBoundingBoxAscent;
+  const total = WM.adv125.reduce((a, b) => a + b, 0);
+  WM.x0 = 720 - total / 2;
+  WM.xs = []; let x = WM.x0; WM.adv125.forEach(a => { WM.xs.push(x); x += a; });
+  WM.xd = WM.xs[5];
+  WM.dot = [WM.xd - m.actualBoundingBoxLeft, YB - m.actualBoundingBoxAscent, m.actualBoundingBoxLeft + m.actualBoundingBoxRight, m.actualBoundingBoxAscent + m.actualBoundingBoxDescent];
+  [...WORD].forEach((ch, i) => { const s = div(wmLayer, 'wm'); s.textContent = ch; s.style.top = px(YB - WM.baseOff); WM.letters.push(s); });
+}
+// f: 1 = palabra completa, 0 = todo dentro del punto. Cada letra se acerca al punto con el mismo factor y su ancho dibujado lo sigue
+function drawWord(f, on) {
+  WM.letters.forEach((s, i) => {
+    vis(s, on && f > .002);
+    if (!on) return;
+    const w0 = WM.adv125[i], w62 = WM.adv62[i], target = f * w0;
+    const wd = 62 + 63 * clamp((target - w62) / (w0 - w62)), nat = lerp(w62, w0, (wd - 62) / 63);
+    s.style.left = px(WM.xd - f * (WM.xd - WM.xs[i]));
+    s.style.fontVariationSettings = `'wdth' ${wd.toFixed(2)}, 'wght' 800`;
+    xf(s, `scaleX(${(target / nat).toFixed(4)})`);
+  });
+}
+
+// ---------- 1 · la forma negra que es punto → píldora → círculo → recuadro ----------
+const hero = div(world, 'a', { background: INK, overflow: 'hidden' });
+const heroLabel = mask(hero, 0, 0, 760, 150, 'Merch para tu marca', { color: '#fff', fontSize: '54px', fontWeight: 600, letterSpacing: '-.02em', lineHeight: '150px', textAlign: 'center' });
+const heroPh = div(hero, 'a ph');
+const heroIris = new Iris(hero);
+
+// ---------- 1 · cuadrícula → bento ----------
+const GRID = i => { const r = Math.floor(i / 3), c = i % 3; return [164 + c * 376, 164 + r * 376, 360, 360]; };
+const CELL = (c, r, cw = 1, rh = 1) => [164 + c * 282, 164 + r * 282, cw * 266 + (cw - 1) * 16, rh * 266 + (rh - 1) * 16];
+const TILES = [
+  { i: 0, key: 'n13', crop: [660, 0, 580, 1196], bento: CELL(0, 0, 1, 2) },
+  { i: 1, key: 'p3', crop: [660, 60, 462, 462], bento: CELL(3, 3) },
+  { i: 2, key: 'n11', crop: [640, 180, 600, 600], bento: CELL(3, 0) },
+  { i: 3, key: 'p2', crop: [240, 300, 880, 427], bento: CELL(0, 2, 2, 1) },
+  { i: 5, key: 'n12', crop: [650, 300, 600, 600], bento: CELL(3, 1) },
+  { i: 6, key: 'p4', crop: [490, 120, 764, 371], bento: CELL(0, 3, 2, 1) },
+  { i: 7, key: 'p8', crop: [722, 250, 400, 825], bento: CELL(2, 2, 1, 2) },
+  { i: 8, key: 'p5', crop: [860, 330, 394, 394], bento: CELL(3, 2) },
+];
+const A_CROP = [0, 140, 1122, 1122], A_BENTO = CELL(1, 0, 2, 2);
+const tileEls = TILES.map(() => div(world, 'a ph', { background: '#ddd' }));
+world.appendChild(hero);   // el recuadro central queda encima
+
+// ---------- 2 · vidrio sobre la foto ----------
+const glassSec = div(world, 'a', { width: '1440px', height: '1440px', overflow: 'hidden' });
+const bgDay = div(glassSec, 'a', { width: '1440px', height: '1440px' }), bgGold = div(glassSec, 'a', { width: '1440px', height: '1440px' });
+const wipeLine = div(glassSec, 'a', { width: '2px', height: '1440px', background: 'rgba(255,255,255,.85)' });
+const gooWord = div(glassSec, 'a', { width: '1440px', height: '1440px' });
+const GF = `800 250px Archivo`;
+let glyphs = [];   // se crean al cargar las fuentes (el campo de distancia sale del glifo real)
+const tb = new Glass(gooWord, { tint: 'rgba(255,255,255,.12)' });
+const tbIcons = ['crop', 'adjust', 'wand', 'heart', 'share'].map(k => div(glassSec, 'a', { color: '#fff', width: '44px', height: '44px' }, svgI(ICON[k], 44, 2)));
+const trackBg = div(glassSec, 'a', { height: '8px', borderRadius: '4px', background: 'rgba(255,255,255,.35)' });
+const trackFg = div(glassSec, 'a', { height: '8px', borderRadius: '4px', background: '#fff' });
+const sunI = div(glassSec, 'a', { color: '#fff' }, svgI(ICON.sun, 46, 2)), setI = div(glassSec, 'a', { color: '#fff' }, svgI(ICON.sunset, 46, 2));
+const knob = new Glass(glassSec, { spec: true, tint: 'rgba(255,255,255,.08)', shadow: '0 22px 40px rgba(0,0,0,.32)' });
+const chip = new Glass(glassSec, { tint: 'rgba(255,255,255,.12)' });
+const chipTxt = mask(glassSec, 0, 0, 360, 84, `${svgI(ICON.sunset, 32, 2)}<span style="margin-left:12px">Atardecer</span>`, { color: '#fff', fontSize: '30px', fontWeight: 600, lineHeight: '84px', display: 'flex', alignItems: 'center', justifyContent: 'center' });
+
+// ---------- 2–3 · pantalla de bloqueo / iPhone ----------
+const lockSec = div(world, 'a', { width: '1440px', height: '1440px' });
+const bezel = div(lockSec, 'a', { background: INK, boxShadow: '0 40px 80px rgba(0,0,0,.28), inset 0 0 0 2px #2a2a2a' });
+const wallEl = div(lockSec, 'a', { overflow: 'hidden' });
+const orbRim = div(lockSec, 'a', { overflow: 'hidden' }); div(orbRim, 'spec'); div(orbRim, 'rim');
+const DIG = '9:41', DF = `700 300px Geist`;
+let digits = [];
+const dateM = mask(lockSec, 0, 0, 900, 70, 'domingo, 2 de noviembre', { color: 'rgba(255,255,255,.95)', fontSize: '46px', fontWeight: 600, lineHeight: '70px', textAlign: 'center', transformOrigin: 'center' });
+const homeBar = div(lockSec, 'a', { background: '#fff', borderRadius: '6px' });
+const mp = new Glass(lockSec, { tint: 'rgba(16,16,16,.30)' });
+const mpIn = div(lockSec, 'a', { width: '900px', height: '190px', transformOrigin: '0 0', color: '#fff' });
+const mpArt = div(mpIn, 'a', { left: '40px', top: '35px', width: '120px', height: '120px', borderRadius: '26px', background: '#000', overflow: 'hidden' }, `<img src="assets/img/logo-light.png" style="width:100%;height:100%;object-fit:contain;padding:12px;box-sizing:border-box">`);
+const mpT1 = mask(mpIn, 190, 48, 560, 56, 'Merch para tu marca', { fontSize: '40px', fontWeight: 650, lineHeight: '56px' });
+const mpT2 = mask(mpIn, 190, 104, 560, 44, 'MH Branding', { fontSize: '32px', fontWeight: 500, lineHeight: '44px', opacity: .78 });
+const mpPlay = div(mpIn, 'a', { left: '780px', top: '55px', width: '80px', height: '80px', color: '#fff' }, svgI(ICON.play, 80, 0));
+const gooIsl = div(lockSec, 'a', { width: '1440px', height: '1440px' });
+const isl = div(gooIsl, 'a', { background: '#000' }), blob = div(gooIsl, 'a', { background: '#000', borderRadius: '50%' });
+
+// ---------- 3 · ventana de Mac / Safari ----------
+const M = [640, 230, 760, 980];
+const mac = div(world, 'a', { borderRadius: '22px', background: '#FBFAF7', overflow: 'hidden', boxShadow: '0 40px 90px rgba(0,0,0,.20), 0 0 0 1px rgba(0,0,0,.08)' });
+rect(mac, M, 22);
+const chrome = div(mac, 'a', { width: '760px', height: '92px', background: '#ECE9E3', borderBottom: '1px solid #DAD6CE' });
+['#FF5F57', '#FEBC2E', '#28C840'].forEach((c, i) => div(chrome, 'a', { left: px(22 + i * 24), top: '22px', width: '13px', height: '13px', borderRadius: '50%', background: c }));
+div(chrome, 'a', { left: '110px', top: '10px', width: '250px', height: '36px', borderRadius: '9px', background: '#FBFAF7' });
+const tabA = mask(chrome, 126, 10, 230, 36, 'Nueva pestaña', { fontSize: '15px', fontWeight: 600, lineHeight: '36px', color: '#333' });
+const tabB = mask(chrome, 126, 10, 230, 36, '<b style="font-family:Archivo;font-variation-settings:\'wdth\' 125,\'wght\' 800">viste.</b> <span style="color:#777;font-weight:500">Merch</span>', { fontSize: '15px', fontWeight: 600, lineHeight: '36px', color: '#111' });
+div(chrome, 'a', { left: '372px', top: '16px', width: '24px', height: '24px', color: '#777' }, svgI(ICON.plus, 24, 2));
+div(chrome, 'a', { left: '22px', top: '58px', width: '22px', height: '22px', color: '#999' }, svgI(ICON.back, 22, 2));
+div(chrome, 'a', { left: '50px', top: '58px', width: '22px', height: '22px', color: '#bbb' }, svgI(ICON.fwd, 22, 2));
+div(chrome, 'a', { left: '200px', top: '54px', width: '360px', height: '30px', borderRadius: '8px', background: '#DEDAD3' });
+const urlA = mask(chrome, 200, 54, 360, 30, 'Buscar o escribir sitio web', { fontSize: '14px', color: '#888', lineHeight: '30px', textAlign: 'center' });
+const urlB = mask(chrome, 200, 54, 360, 30, `<span style="display:inline-flex;align-items:center;gap:6px;color:#555">${svgI(ICON.lock, 14, 2.4)}MH Branding · viste.</span>`, { fontSize: '14px', lineHeight: '30px', textAlign: 'center' });
+const content = div(mac, 'a', { left: 0, top: '92px', width: '760px', height: '888px', overflow: 'hidden' });
+const newTab = div(content, 'a', { width: '760px', height: '888px' });
+div(newTab, 'a', { left: '48px', top: '60px', fontSize: '22px', fontWeight: 650 }, 'Favoritos');
+['M', 'N', 'R', 'A', 'H', 'C', 'Ay', '+'].forEach((l, i) => {
+  const x = 48 + (i % 4) * 172, y = 110 + Math.floor(i / 4) * 190;
+  div(newTab, 'a', { left: px(x), top: px(y), width: '120px', height: '120px', borderRadius: '26px', background: ['#111', '#E8E3DA', '#D9C7A6', '#1E1E2E', '#F2F2F2', '#E5E0D6', '#1A1A1A', '#EAE6DE'][i], color: ['#EFA83A', '#111', '#111', '#E9C43A', '#F2A33A', '#111', '#F35B5B', '#888'][i], fontSize: '40px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'inset 0 0 0 1px rgba(0,0,0,.06)' }, l);
+});
+const page = div(content, 'a', { width: '760px', height: '1400px' });
+const pageScroll = div(page, 'a', { width: '760px', height: '1400px' });
+const navWM = div(page, 'a', { left: '28px', top: '22px', fontFamily: 'Archivo', fontVariationSettings: "'wdth' 125, 'wght' 800", fontSize: '30px', lineHeight: '40px' }, 'viste.');
+div(page, 'a', { left: '250px', top: '22px', display: 'flex', gap: '26px', fontSize: '15px', fontWeight: 500, color: '#555', lineHeight: '40px' }, '<span>Playeras</span><span>Gorras</span><span>Polos</span><span>Uniformes</span>');
+const navBtn = div(page, 'a', { left: '620px', top: '16px', width: '116px', height: '40px', borderRadius: '20px', background: INK, color: '#fff', fontSize: '15px', fontWeight: 600, lineHeight: '40px', textAlign: 'center' }, 'Pedir merch');
+const hl = div(pageScroll, 'a', { left: '28px', top: '96px', fontSize: '44px', fontWeight: 650, letterSpacing: '-.035em', lineHeight: '48px', whiteSpace: 'nowrap' }, 'Tu marca también se viste.');
+const sub = div(pageScroll, 'a', { left: '30px', top: '152px', fontSize: '18px', color: '#6b6b6b', whiteSpace: 'nowrap' }, 'Playeras, gorras y uniformes con tu logo.');
+const slot = div(pageScroll, 'a', { left: '28px', top: '200px', width: '704px', height: '660px', borderRadius: '16px', border: '2px dashed #CFC8BC', color: '#A49B8C', fontSize: '20px', fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center' }, 'Suelta tu foto aquí');
+const info = div(page, 'a', { left: '420px', top: '0', width: '320px', height: '700px' });
+const pT = mask(info, 0, 100, 330, 44, 'Playera NALADO MX', { fontSize: '30px', fontWeight: 650, letterSpacing: '-.02em', lineHeight: '44px' });
+const pS = mask(info, 0, 146, 330, 26, 'Edición enmarcada · MH Branding', { fontSize: '16px', color: '#6b6b6b', lineHeight: '26px' });
+const pL1 = mask(info, 0, 214, 330, 20, 'COLOR DE MARCO', { fontSize: '12px', letterSpacing: '.14em', color: '#999', fontWeight: 600, lineHeight: '20px' });
+const SW = ['#8A5A33', '#111111', '#C9A050'];
+const swatches = SW.map((c, i) => div(info, 'a', { left: px(i * 58), top: '246px', width: '40px', height: '40px', borderRadius: '50%', background: c, boxShadow: 'inset 0 0 0 1px rgba(0,0,0,.15)' }));
+const swRing = div(info, 'a', { width: '52px', height: '52px', borderRadius: '50%', border: '2.5px solid #111' });
+const pL2 = mask(info, 0, 316, 330, 20, 'TALLA', { fontSize: '12px', letterSpacing: '.14em', color: '#999', fontWeight: 600, lineHeight: '20px' });
+const SIZES = ['S', 'M', 'L', 'XL'];
+const sizeBase = SIZES.map((l, i) => div(info, 'a', { left: px(i * 66), top: '346px', width: '56px', height: '40px', borderRadius: '20px', boxShadow: 'inset 0 0 0 1.5px #D3CCC0', fontSize: '16px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center' }, l));
+const sizeSel = div(info, 'a', { top: '346px', width: '56px', height: '40px', borderRadius: '20px', background: '#111', overflow: 'hidden' });
+const sizeSelTxt = div(sizeSel, 'a', { top: 0, width: '264px', height: '40px' });
+SIZES.forEach((l, i) => div(sizeSelTxt, 'a', { left: px(i * 66), width: '56px', height: '40px', color: '#fff', fontSize: '16px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center' }, l));
+const macBlk = div(world, 'a', { background: INK, overflow: 'hidden' });
+const blindRoll = div(macBlk, 'a', { height: '14px', borderRadius: '7px', background: '#2b2b2b' });
+
+// marco que crece desde el borde de la foto (passe-partout + moldura)
+const molding = div(world, 'a', { background: SW[0] });
+const moldPaint = div(world, 'a', { background: SW[1] });
+const matEl = div(world, 'a', { background: '#F6F3EC', boxShadow: 'inset 3px 4px 8px rgba(0,0,0,.18)' });
+const card = div(world, 'a', { overflow: 'hidden', boxShadow: '0 20px 40px rgba(0,0,0,.25)' });
+
+// botón negro: nav → CTA → forma del pedido
+const cta = div(world, 'a', { background: INK });
+const ctaTxt = mask(world, 0, 0, 400, 60, 'Pedir merch', { color: '#fff', fontWeight: 600, textAlign: 'center', transformOrigin: '0 0' });
+const oL = ['Pedido', 'Estampando', 'En camino'].map(s => mask(world, 0, 0, 640, 90, s, { color: '#fff', fontSize: '64px', fontWeight: 650, letterSpacing: '-.03em', lineHeight: '90px' }));
+const oPct = mask(world, 0, 0, 220, 90, '0%', { color: '#fff', fontSize: '64px', fontWeight: 500, lineHeight: '90px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' });
+const oCheck = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); oCheck.setAttribute('class', 'a'); oCheck.setAttribute('viewBox', '0 0 100 100');
+oCheck.innerHTML = '<path d="M22 54 L42 72 L78 32" fill="none" stroke="#fff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" pathLength="1" stroke-dasharray="1"/>';
+world.appendChild(oCheck);
+const oBarBg = div(world, 'a', { height: '10px', borderRadius: '5px', background: 'rgba(255,255,255,.22)' });
+const oBar = div(world, 'a', { height: '10px', borderRadius: '5px', background: '#fff', transformOrigin: 'left' });
+const oRoute = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); oRoute.setAttribute('class', 'a'); oRoute.style.overflow = 'visible';
+oRoute.innerHTML = '<path id="rt" d="M0 60 C 180 -10, 320 130, 520 50 S 760 20, 800 60" fill="none" stroke="rgba(255,255,255,.9)" stroke-width="6" stroke-linecap="round" stroke-dasharray="1" pathLength="1"/><circle cx="800" cy="60" r="14" fill="#EFA83A"/>';
+world.appendChild(oRoute);
+const van = div(world, 'a', { width: '96px', height: '60px' }, `<svg viewBox="0 0 96 60" width="96" height="60"><rect x="2" y="8" width="58" height="36" rx="6" fill="#fff"/><path d="M60 18h18l14 14v12H60z" fill="#fff"/><rect x="66" y="22" width="12" height="10" rx="2" fill="#0B0B0B"/><circle cx="22" cy="48" r="9" fill="#0B0B0B" stroke="#fff" stroke-width="4"/><circle cx="74" cy="48" r="9" fill="#0B0B0B" stroke="#fff" stroke-width="4"/><text x="31" y="32" text-anchor="middle" font-family="Archivo" font-weight="800" font-size="15" fill="#0B0B0B">viste.</text></svg>`);
+const delivered = mask(world, 0, 0, 600, 80, 'Entregado', { fontSize: '56px', fontWeight: 650, letterSpacing: '-.03em', lineHeight: '80px', textAlign: 'center' });
+
+// ---------- 5 · pared ----------
+const wallSec = div(world, 'a', { width: '1440px', height: '1440px', overflow: 'hidden', background: 'linear-gradient(160deg,#EEE7DB 0%,#E6DDCF 55%,#DCD2C2 100%)' });
+const sunPatch = div(wallSec, 'a', { left: '620px', top: '-260px', width: '1200px', height: '1000px', background: 'radial-gradient(ellipse at 40% 50%,rgba(255,246,226,.8),rgba(255,246,226,0) 62%)' });
+const leafWrap = div(wallSec, 'a', { width: '1440px', height: '1440px', filter: 'blur(8px)', opacity: .5 });
+const LEAVES = [[1160, 60, 300, 80, 35], [1040, 220, 330, 88, 60], [1250, 320, 260, 70, 15], [960, 400, 240, 64, 75], [1180, 500, 290, 76, 40], [1330, 140, 220, 60, 100], [1080, 600, 220, 58, 55], [1300, 690, 200, 54, 20]];
+const leafEls = LEAVES.map(() => div(leafWrap, 'a', { borderRadius: '50%', background: 'rgba(70,58,44,.6)' }));
+const stem = div(wallSec, 'a', { left: '880px', top: '-60px', width: '12px', height: '860px', background: 'rgba(70,58,44,.38)', transformOrigin: 'top', filter: 'blur(7px)' });
+const FR = [460, 290, 520, 700], MOLD = 22, MAT = 64;
+const wMat = div(wallSec, 'a', { background: '#F5F2EB', boxShadow: 'inset 4px 5px 9px rgba(0,0,0,.2)' });
+const wPhoto = div(wallSec, 'a', { overflow: 'hidden' });
+const wIris = new Iris(wallSec);
+const frameShadow = div(world, 'a', {});
+
+// ---------- capa negra única: inunda, enmarca y vuelve a ser el punto ----------
+const blk = div(world, 'a', { borderStyle: 'solid', borderColor: INK, background: 'transparent' });
+
+// ---------- cursor ----------
+const curLayer = div(world, 'a', { width: '1440px', height: '1440px' });
+const ripple = div(curLayer, 'a', { borderRadius: '50%', border: '3px solid rgba(255,255,255,.92)', boxShadow: '0 0 0 1px rgba(0,0,0,.25), inset 0 0 0 1px rgba(0,0,0,.25)' });
+const ring = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); ring.setAttribute('class', 'a'); ring.setAttribute('width', '110'); ring.setAttribute('height', '110'); ring.setAttribute('viewBox', '0 0 110 110');
+ring.innerHTML = '<circle cx="55" cy="55" r="46" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" pathLength="1" stroke-dasharray="1" transform="rotate(-90 55 55)"/>';
+curLayer.appendChild(ring);
+const cur = div(curLayer, 'a', { transformOrigin: '2px 2px', filter: 'drop-shadow(0 3px 5px rgba(0,0,0,.3))' }, CURSOR);
+
+// =====================================================================
+// LÍNEA DE TIEMPO
+// =====================================================================
+const PILL = [340, 645, 760, 150], CIRC = [440, 440, 560, 560], T4 = [540, 540, 360, 360];
+const PHONE0 = [460, 135, 520, 1130];         // pantalla del iPhone centrado
+const PH_DX = -330;                            // el iPhone se recorre a la izquierda para dejar sitio a la Mac
+const WALL_SQ = [580, 150, 860, 860], WALL_PH = [700, 40, 560, 1217], HERO_CROP = [520, 60, 900, 823], PRINT_CROP = [760, 250, 440, 565];
+const SLOT = [M[0] + 28, M[1] + 92 + 200, 704, 660];
+const PRINT = [M[0] + 70, M[1] + 92 + 130, 270, 346];
+const NAVBTN = [M[0] + 620, M[1] + 92 + 16, 116, 40], CTASLOT = [M[0] + 420, M[1] + 92 + 450, 310, 60];
+const O1 = [370, 600, 700, 240], O2 = [320, 600, 800, 240], O3 = [220, 540, 1000, 360], O4 = [570, 570, 300, 300];
+
+// cámara (estilo Screen Studio): [t0, t1, [cx, cy, z]]
+const A_Z = 1440 / A_BENTO[2], A_C = [A_BENTO[0] + A_BENTO[2] / 2, A_BENTO[1] + A_BENTO[3] / 2];
+function camera(t) {
+  if (t < 6) return tw(t, [720, 720, 1], [[5.5, 6.0, [A_C[0], A_C[1], A_Z]]]);
+  return tw(t, [720, 720, 1], [
+    [8.9, 9.35, [720, 1010, 1.22]], [10.0, 10.45, [720, 720, 1]],
+    [14.95, 15.45, [1020, 716, 1.32]], [18.85, 19.4, [720, 720, 1]],
+  ]);
+}
+
+// cursor: posiciones [t0, t1, [x, y]] y clics/presiones
+const CUR_PATH = [
+  [1.7, 2.15, [880, 765]], [2.4, 2.85, [1180, 1120]], [5.0, 5.42, [760, 470]], [5.6, 6.0, [1560, 1560]],
+  [6.01, 6.02, [1580, 1520]], [8.05, 8.45, [560, 1228]], [8.6, 8.95, [352, 1228]], [9.05, 9.95, [1100, 1228]], [10.1, 10.6, [1580, 1400]],
+  [13.55, 14.05, [395, 820]], [14.5, 15.0, [906, 258]], [15.05, 15.45, [1000, 900]], [15.6, 16.0, [1180, 980]],
+  [16.6, 16.98, [1140, 588]], [17.15, 17.48, [1214, 688]], [18.2, 18.55, [1230, 794]], [18.75, 19.3, [1580, 1500]],
+  [23.1, 23.45, [740, 700]], [24.1, 24.6, [1580, 1500]],
+];
+const CLICKS = [2.25, 5.5, 8.5, 17.0, 17.5, 18.6, 23.5, 24.0];
+const HOLDS = [[9.0, 10.0], [14.1, 15.5]];   // presionar y arrastrar
+function cursorAt(t) {
+  const [x, y] = tw(t, [1580, 1560], CUR_PATH);
+  let s = 1;
+  CLICKS.forEach(c => { if (t > c - .06 && t < c + .3) s -= .16 * Math.sin(Math.PI * clamp((t - c + .06) / .18)) * (t < c + .12 ? 1 : 0); });
+  HOLDS.forEach(([a, b]) => { s -= .14 * (spring(t - a, 30, 1) - spring(t - b, 30, 1)); });
+  return { x, y, s };
+}
+
+// escena detrás del vidrio en la sección 2
+function glassScene(t) {
+  const day = cover('n15', A_CROP, [0, 0, S, S]);
+  const kx = knobX(t), wipe = (kx - 352) / (1100 - 352) * S;
+  const gold = cover('n15g', A_CROP, [0, 0, S, S], { clip: [0, 0, clamp(wipe, 0, S), S] });
+  return [day, gold];
+}
+const knobX = t => tw(t, 352, [[9.05, 9.95, 1100]]);
+
+// pantalla del iPhone (rect, recorte) en el tiempo t
+function phoneDX(t) { return PH_DX * spring(t - 12.9, 11, .8) - 760 * spring(t - 19.0, 10, .85); }
+function screenRect(t) {
+  const k = spring(t - 12.0, 9.5, .82), dx = phoneDX(t);
+  const r = lerpCrop([0, 0, S, S], PHONE0, k);
+  return [r[0] + dx, r[1], r[2], r[3]];
+}
+function wallLayer(t) {
+  const k = spring(t - 12.0, 9.5, .82), sr = screenRect(t);
+  const crop = lerpCrop(WALL_SQ, WALL_PH, k);
+  const L = cover('n14', crop, sr, { clip: [sr[0], sr[1], sr[0] + sr[2], sr[1] + sr[3]], round: lerp(0, 62, k) });
+  if (t < 11.3) { const rr = orbInner(t); L.clip = null; L.circle = { cx: 720, cy: 640, r: rr }; }
+  return L;
+}
+const orbR = t => t < 11 ? sp(t, [[10, 88], [10.0, 280, 11, .78]]) : lerp(280, 1150, eIn(p(t, 11.0, 11.3)));
+const orbInner = t => t < 11 ? (orbR(t) - 16) * eOut(p(t, 10.5, 10.8)) : orbR(t) - 16;
+
+// =====================================================================
+// seek(t)
+// =====================================================================
+async function seek(t) {
+  t = clamp(t, 0, DUR - 1e-6);
+  PENDING = [];
+  const cam = camera(t);
+  xf(world, `translate(720px,720px) scale(${cam[2]}) translate(${-cam[0]}px,${-cam[1]}px)`);
+
+  // ---- 1 · wordmark (0–1.0 y regreso 25.9–27) ----
+  const fOut = 1 - eIO(p(t, .5, 1.0)), fIn0 = spring(t - 25.95, 14, .55), fIn = t > 26.6 && Math.abs(1 - fIn0) < .002 ? 1 : fIn0;
+  const f = t < 13 ? fOut : fIn;
+  drawWord(f, t < 1.05 || t > 25.9);
+
+  // ---- 1 · forma negra: punto → píldora → círculo → recuadro A ----
+  const onHero = t < 6.0;
+  vis(hero, onHero);
+  if (onHero) {
+    const r = sp(t, [[0, [...WM.dot, 8]], [1.0, [...PILL, 75], 13, .74], [2.3, [...CIRC, 280], 13, .78], [3.5, [...T4, 24], 12, .8], [5.0, [...A_BENTO, 24], 11, .8]]);
+    const rad = t > 5.7 ? lerp(24, 0, eIO(p(t, 5.7, 6.0))) : r[4];
+    rect(hero, r.slice(0, 4), rad);
+    // texto dentro de la píldora (su propia máscara)
+    heroLabel.style.left = px((r[2] - 760) / 2); heroLabel.style.top = px((r[3] - 150) / 2);
+    rise(heroLabel, t, 1.5);
+    vis(heroLabel, t >= 1.5 && t < 2.85);
+    // foto dentro del círculo (detrás del iris, aparece mientras está cerrado)
+    vis(heroPh, t >= 2.8);
+    if (t >= 2.8) { rect(heroPh, [0, 0, r[2], r[3]]); paint(heroPh, [cover('n15', A_CROP, [0, 0, r[2], r[3]])], shift(0, 0)); }
+    const ik = t < 2.8 ? 1 - eIO(p(t, 2.5, 2.78)) : spring(t - 3.0, 18, .9) * 1.0;
+    heroIris.set(t > 2.45 && t < 3.35, r[2] / 2, r[3] / 2, Math.min(r[2], r[3]) / 2, ik);
+  }
+  // ---- 1 · cuadrícula que se despliega y se reacomoda ----
+  TILES.forEach((d, j) => {
+    const el = tileEls[j], on = t >= 4.0 && t < 6.0;
+    vis(el, on);
+    if (!on) return;
+    const g = GRID(d.i), rr = sp(t, [[0, g], [5.0 + (j % 3) * .03, d.bento, 11, .8]]);
+    rect(el, rr, 24);
+    const row = Math.floor(d.i / 3), col = d.i % 3, plus = row === 1 || col === 1;
+    const tu = plus ? 4.0 : 4.5 + (j % 2) * .06, k = spring(t - tu, 15, .7);
+    // se despliega desde el borde que comparte con su vecino (como mapa de papel)
+    let origin = 'center', tf = '';
+    if (plus) { if (row === 0) { origin = 'bottom'; tf = `scaleY(${k})`; } else if (row === 2) { origin = 'top'; tf = `scaleY(${k})`; } else if (col === 0) { origin = 'right'; tf = `scaleX(${k})`; } else { origin = 'left'; tf = `scaleX(${k})`; } }
+    else { origin = col === 0 ? 'right' : 'left'; tf = `scaleX(${k})`; }
+    el.style.transformOrigin = origin; xf(el, tf);
+    paint(el, [cover(d.key, d.crop, [0, 0, rr[2], rr[3]])], shift(0, 0));
+  });
+
+  // ---- 2 · vidrio ----
+  const onGlass = t >= 6.0 && t < 11.35;
+  vis(glassSec, onGlass);
+  if (onGlass) {
+    const scene = glassScene(t);
+    paint(bgDay, [scene[0]], shift(0, 0)); paint(bgGold, [scene[1]], shift(0, 0));
+    const wipe = scene[1].clip[2];
+    vis(wipeLine, wipe > 1 && wipe < S - 1); wipeLine.style.left = px(wipe - 1);
+    // letras de vidrio que aparecen una a una y se derriten en una gota
+    const gooOn = t > 7.4 && t < 8.15;
+    gooWord.style.filter = gooOn ? 'url(#goo)' : '';
+    const melt = eIO(p(t, 7.5, 7.95));
+    glyphs.forEach((g, i) => {
+      const s0 = 250 / F, gx = 720 + (WM.xs[i] - 720 + WM.adv125[i] / 2) * s0 + (WM.adv125[5] * s0) / 2, gy = 600;
+      const pop = spring(t - (6.5 + [0, .12, .24, .5, .62][i]), 16, .5);
+      const cx = lerp(gx, 720, melt), cy = lerp(gy, 600, melt), sc = pop * lerp(1, .25, melt);
+      g.set(t < 7.98, cx, cy, sc, scene);
+    });
+    // gota → barra de herramientas → slider
+    const dropS = 200 * eOut(p(t, 7.5, 7.95));
+    const bar = sp(t, [[0, [720, 600, dropS, dropS]], [8.0, [720, 1228, 900, 136], 12, .74], [8.55, [720, 1228, 980, 128], 14, .8], [10.0, [knobX(10), 1228, 0, 128], 12, .9]]);
+    if (t < 8.0) { bar[2] = dropS; bar[3] = dropS; }
+    tb.set(t > 7.5 && t < 10.4 && bar[2] > 4, [bar[0] - bar[2] / 2, bar[1] - bar[3] / 2, bar[2], bar[3]], bar[3] / 2, scene, { scale: 60 });
+    tbIcons.forEach((el, i) => {
+      const k = spring(t - (8.2 + i * .05), 16, .55) - spring(t - (8.55 + (i === 1 ? .08 : 0)), 18, .9);
+      vis(el, k > .01); xf(el, `scale(${Math.max(0, k)})`);
+      el.style.left = px(720 + (i - 2) * 170 - 22); el.style.top = px(1228 - 22);
+    });
+    const tx0 = 352, tx1 = 1100, kx = knobX(t), draw = eIO(p(t, 8.6, 8.95)), coll = eIO(p(t, 10.0, 10.3));
+    const onT = t > 8.6 && t < 10.3;
+    vis(trackBg, onT); vis(trackFg, onT);
+    const l0 = lerp(tx0, kx, coll), l1 = lerp(lerp(tx0, tx1, draw), kx, coll);
+    rect(trackBg, [l0, 1224, Math.max(0, l1 - l0), 8]); rect(trackFg, [l0, 1224, Math.max(0, kx - l0) * draw, 8]);
+    [[sunI, tx0 - 92], [setI, tx1 + 46]].forEach(([el, x], i) => {
+      const k = spring(t - (8.7 + i * .06), 16, .55) * (1 - coll);
+      vis(el, k > .01 && t < 10.3); el.style.left = px(x); el.style.top = px(1228 - 23); xf(el, `scale(${Math.max(0, k)})`);
+    });
+    // perilla → lente (agarrada) → orbe
+    const kn = spring(t - 8.8, 16, .55), hold = spring(t - 9.0, 14, .6);
+    let kd = lerp(52, 176, hold), ky = 1228 - 26 * hold, kcx = kx;
+    if (t >= 10.0) { const o = spring(t - 10.0, 11, .78); kcx = lerp(kx, 720, o); ky = lerp(1228 - 26, 640, o); kd = orbR(t) * 2; }
+    knob.set(t > 8.8 && t < 11.35, [kcx - kd * kn / 2, ky - kd * kn / 2, kd * kn, kd * kn], kd * kn / 2, scene, { scale: 120, band: kd * kn / 2, zoom: 1.35 });
+    // chip superior: indica la luz
+    const ch = spring(t - 9.1, 14, .6) - spring(t - 10.0, 18, .9);
+    chip.set(ch > .02, [720 - 180 * ch, 110, 360 * ch, 84], 42, scene, { scale: 40 });
+    vis(chipTxt, ch > .5); rect(chipTxt, [540, 110, 360, 84]);
+  }
+
+  // ---- 2–3 · orbe → pantalla de bloqueo → iPhone ----
+  const onLock = t >= 10.45 && t < 19.9;
+  vis(lockSec, onLock);
+  if (onLock) {
+    const wl = wallLayer(t), sr = screenRect(t), kph = spring(t - 12.0, 9.5, .82), dx = phoneDX(t);
+    // fondo de pantalla (dentro del orbe, luego toda la pantalla, luego la pantalla del iPhone)
+    rect(wallEl, [0, 0, S, S]); paint(wallEl, [wl], shift(0, 0));
+    // presión larga: el fondo se levanta un poco
+    const lift = spring(t - 14.3, 16, .7) - spring(t - 14.55, 16, .9);
+    xf(wallEl, `translate(${(sr[0] + sr[2] / 2)}px,${(sr[1] + sr[3] / 2)}px) scale(${1 - .03 * lift}) translate(${-(sr[0] + sr[2] / 2)}px,${-(sr[1] + sr[3] / 2)}px)`);
+    // borde del orbe encima de la foto interior
+    const oR = orbR(t), oOn = t >= 10.5 && t < 11.3;
+    vis(orbRim, oOn); rect(orbRim, [720 - oR, 640 - oR, 2 * oR, 2 * oR], oR);
+    // bisel que crece desde el borde de la pantalla
+    const bz = 20 * spring(t - 12.15, 12, .8);
+    vis(bezel, t >= 12.1); rect(bezel, [sr[0] - bz, sr[1] - bz, sr[2] + 2 * bz, sr[3] + 2 * bz], lerp(0, 82, kph));
+    const lockLayers = [wl];
+    // reloj de vidrio
+    const dm = digits.map(d => d.adv * .92), dw = dm.reduce((a, b) => a + b, 0);
+    const lx0 = 720 - dw / 2, ccx = sr[0] + sr[2] / 2, sc = lerp(1, .40, kph), cyL = lerp(360, sr[1] + 250, kph);
+    let acc = 0;
+    digits.forEach((d, i) => {
+      const cx0 = lx0 + acc + dm[i] / 2; acc += dm[i];
+      const pop = spring(t - (11.05 + i * .07), 16, .55);
+      d.set(t >= 11.05, ccx + (cx0 - 720) * sc, cyL - 28 * sc, sc * pop, lockLayers);
+    });
+    // fecha
+    const ds = lerp(1, .44, kph);
+    rect(dateM, [ccx - 450, lerp(150, sr[1] + 92, kph) - 35, 900, 70]); xf(dateM, `scale(${ds})`);
+    rise(dateM, t, 11.5);
+    // barra de inicio → reproductor de música de vidrio
+    const hb = eOut(p(t, 11.5, 11.68)), toMp = spring(t - 11.72, 12, .74);
+    vis(homeBar, t >= 11.5 && t < 11.78);
+    rect(homeBar, [720 - 110 * hb, 1384, 220 * hb, 12], 6);
+    const mpL = [lerp(610, 270, toMp), lerp(1384, 1130, toMp), lerp(220, 900, toMp), lerp(12, 190, toMp)];
+    const mpP = [sr[0] + 20, sr[1] + sr[3] - 150, sr[2] - 40, 118];
+    const mr = lerpCrop(mpL, mpP, kph);
+    mp.set(t >= 11.72, mr, lerp(lerp(6, 95, clamp(toMp)), 38, kph), lockLayers, { scale: 50 });
+    const ms = mr[2] / 900;
+    vis(mpIn, t >= 11.9); rect(mpIn, [mr[0], mr[1] + (mr[3] - 190 * ms) / 2, 900, 190]); xf(mpIn, `scale(${ms})`);
+    const art = spring(t - 11.92, 16, .55); xf(mpArt, `scale(${art})`);
+    rise(mpT1, t, 11.98); rise(mpT2, t, 12.04);
+    xf(mpPlay, `scale(${spring(t - 12.05, 16, .55)})`);
+    // Dynamic Island: se estira como líquido, se pellizca y vuela
+    const iOn = t >= 12.25 && t < 14.0;
+    vis(gooIsl, iOn); gooIsl.style.filter = t > 12.45 && t < 13.6 ? 'url(#goo)' : '';
+    const ip = spring(t - 12.25, 16, .6), st = spring(t - 12.5, 9, .7) - spring(t - 13.0, 12, .8);
+    const iw = 120 * ip + 150 * st, ih = 36 * ip, ix = sr[0] + sr[2] / 2 - 60 * ip, iy = sr[1] + 16;
+    rect(isl, [ix, iy, iw, ih], ih / 2);
+    const fly = eIO(p(t, 13.0, 13.5)), bs = 36 * clamp(st * 1.4 + fly);
+    const b0 = [ix + iw - 18, iy + 18], b1 = [M[0] + M[2] / 2, M[1] + M[3] / 2];
+    const bx = lerp(b0[0], b1[0], fly), by = lerp(b0[1], b1[1], fly) - Math.sin(Math.PI * fly) * 220;
+    vis(blob, t >= 12.5 && t < 13.55); rect(blob, [bx - bs / 2, by - bs / 2, bs, bs], bs / 2);
+  }
+
+  // ---- 3 · Mac: la gota crece en ventana negra que se enrolla como persiana ----
+  const dxw = 900 * spring(t - 19.05, 10, .85);
+  const onMac = t >= 13.5 && t < 20.2;
+  vis(macBlk, onMac && t < 14.15);
+  if (t >= 13.5 && t < 14.15) {
+    const g = spring(t - 13.5, 13, .8), c = [M[0] + M[2] / 2, M[1] + M[3] / 2];
+    const w = lerp(36, M[2], g), h = lerp(36, M[3], g), roll = eIO(p(t, 13.82, 14.12));
+    rect(macBlk, [c[0] - w / 2, c[1] - h / 2, w, h * (1 - roll)], lerp(18, 22, g));
+    vis(blindRoll, roll > 0); rect(blindRoll, [0, h * (1 - roll) - 14, w, 14], 7);
+  }
+  vis(mac, onMac && t >= 13.8);
+  if (onMac) {
+    xf(mac, `translateX(${dxw}px)`);
+    const push = eIO(p(t, 15.0, 15.4));
+    xf(newTab, `translateX(${-760 * push}px)`); xf(page, `translateX(${760 * (1 - push)}px)`);
+    rise(tabA, t, 0, 15.0); rise(tabB, t, 15.05); rise(urlA, t, 0, 15.0); rise(urlB, t, 15.05);
+    // scroll: el hero sube y aparece la tarjeta de producto
+    const scr = eIO(p(t, 16.0, 16.4));
+    xf(pageScroll, `translateY(${-220 * scr}px)`);
+    vis(slot, t < 15.95);
+    vis(info, t >= 16.3);
+    rise(pT, t, 16.5); rise(pS, t, 16.58); rise(pL1, t, 16.6); rise(pL2, t, 16.68);
+    swatches.forEach((el, i) => xf(el, `scale(${spring(t - (16.62 + i * .05), 16, .55)})`));
+    const swSel = t < 17.0 ? 0 : 1, swx = sp(t, [[0, 0], [17.0, 58, 16, .75]]);
+    rect(swRing, [swx - 6, 240, 52, 52]); xf(swRing, `scale(${spring(t - 16.7, 16, .6)})`);
+    sizeBase.forEach((el, i) => xf(el, `scale(${spring(t - (16.72 + i * .04), 16, .55)})`));
+    const sx = sp(t, [[0, 66], [17.5, 132, 16, .75]]);
+    sizeSel.style.left = px(sx); xf(sizeSel, `scale(${spring(t - 16.85, 16, .6)})`); xf(sizeSelTxt, `translateX(${-sx}px)`);
+  }
+  // tarjeta arrastrada → hero → foto enmarcada
+  const onCard = t >= 14.45 && t < 22.0;
+  vis(card, onCard);
+  let cr = [0, 0, 0, 0], crop = WALL_PH, rad = 18;
+  if (onCard) {
+    const c = cursorAt(t);
+    // la copia del fondo brota bajo el cursor con un resorte (no tapa de golpe la pantalla)
+    const g1 = spring(t - 14.45, 15, .62), cx = c.x + 2, cy = c.y + 123;
+    const thumb = [c.x - 73, c.y - 40, 150, 326];
+    cr = [cx - 75 * g1, cy - 163 * g1, 150 * g1, 326 * g1];
+    rad = 18 * g1;
+    if (t >= 15.5) { const g2 = spring(t - 15.5, 12, .8); const sl = [SLOT[0], SLOT[1], SLOT[2], SLOT[3]]; cr = lerpCrop(thumb, sl, g2); crop = lerpCrop(WALL_PH, HERO_CROP, clamp(g2)); rad = lerp(18, 16, g2); }
+    if (t >= 16.0) { const g3 = spring(t - 16.0, 11, .82); const sl = [SLOT[0], SLOT[1] - 220 * eIO(p(t, 16.0, 16.4)), SLOT[2], SLOT[3]]; cr = lerpCrop(sl, PRINT, g3); crop = lerpCrop(HERO_CROP, PRINT_CROP, clamp(g3)); rad = lerp(16, 0, clamp(g3)); }
+    cr = [cr[0] + (t > 19 ? dxw : 0), cr[1], cr[2], cr[3]];
+    rect(card, cr, rad);
+    card.style.boxShadow = t < 15.5 ? '0 20px 40px rgba(0,0,0,.25)' : '';
+    paint(card, [cover('n14', crop, [0, 0, cr[2], cr[3]])], shift(0, 0));
+  }
+  // passe-partout y moldura que crecen desde el borde de la foto
+  const fm = spring(t - 16.1, 13, .8);
+  const onFrame = t >= 16.1 && t < 22.0;
+  [matEl, molding, moldPaint].forEach(el => vis(el, onFrame));
+  if (onFrame) {
+    const mt = 34 * fm, mo = 16 * fm;
+    rect(matEl, [cr[0] - mt, cr[1] - mt, cr[2] + 2 * mt, cr[3] + 2 * mt]);
+    const mr = [cr[0] - mt - mo, cr[1] - mt - mo, cr[2] + 2 * (mt + mo), cr[3] + 2 * (mt + mo)];
+    rect(molding, mr); molding.style.boxShadow = `0 ${18 * fm}px ${36 * fm}px rgba(0,0,0,.22)`;
+    rect(moldPaint, mr);
+    const paintK = eIO(p(t, 17.0, 17.35));
+    moldPaint.style.clipPath = `inset(0 ${100 - 100 * paintK}% 0 0)`;
+    vis(moldPaint, onFrame && paintK > 0);
+  }
+
+  // ---- 3–4 · botón negro: nav → CTA → pedido ----
+  vis(navBtn, t < 18.0);
+  const onCta = t >= 18.0 && t < 22.0;
+  vis(cta, onCta);
+  ['Pedido', 'Estampando', 'En camino'].forEach((_, i) => vis(oL[i], false));
+  vis(oPct, false); vis(oCheck, false); vis(oBarBg, false); vis(oBar, false); vis(oRoute, false); vis(van, false); vis(delivered, false); vis(ctaTxt, false);
+  if (onCta) {
+    const nav = [NAVBTN[0] + dxw, NAVBTN[1], NAVBTN[2], NAVBTN[3]], slotR = [CTASLOT[0] + dxw, CTASLOT[1], CTASLOT[2], CTASLOT[3]];
+    let r;
+    if (t < 19.0) { const k = spring(t - 18.0, 11, .8); r = [...lerpCrop(nav, slotR, k), 20 + 10 * k]; r[0] -= Math.sin(Math.PI * clamp(k)) * 70; }
+    else {
+      r = sp(t, [[0, [...slotR, 30]], [19.0, [...O1, 120], 11, .8], [19.5, [...O2, 120], 13, .8], [20.5, [...O3, 100], 12, .8], [21.5, [...O4, 150], 12, .78]]);
+    }
+    rect(cta, r.slice(0, 4), r[4]);
+    // texto del botón (su propia máscara, escala con el botón)
+    if (t < 19.12) {
+      const fs = r[3] < 50 ? 15 : lerp(15, 24, clamp((r[3] - 40) / 20));
+      vis(ctaTxt, true); rect(ctaTxt, [r[0], r[1], r[2], r[3]]); ctaTxt.style.fontSize = px(fs); ctaTxt.style.lineHeight = px(r[3]);
+      xf(ctaTxt.firstChild, `translateY(${eIn(p(t, 18.95, 19.1)) * -112}%)`);
+    }
+    if (t >= 19.0) {
+      const cx = r[0] + r[2] / 2, cy = r[1] + r[3] / 2;
+      // Pedido ✓
+      rect(oL[0], [cx - 230, cy - 45, 360, 90]); rise(oL[0], t, 19.05, 19.45);
+      rect(oCheck, [cx + 120, cy - 50, 100, 100]); vis(oCheck, t >= 19.1 && t < 19.5);
+      oCheck.firstChild.style.strokeDashoffset = 1 - eOut(p(t, 19.12, 19.35));
+      oCheck.style.transform = `scale(${1 - eIn(p(t, 19.45, 19.55))})`;
+      // Estampando %
+      rect(oL[1], [cx - 360, cy - 75, 500, 90]); rise(oL[1], t, 19.55, 20.45);
+      const pc = Math.round(100 * eIO(p(t, 19.6, 20.35)));
+      rect(oPct, [cx + 140, cy - 75, 220, 90]); oPct.firstChild.textContent = `${pc}%`; rise(oPct, t, 19.6, 20.45);
+      const bOn = t >= 19.6 && t < 20.5;
+      vis(oBarBg, bOn); vis(oBar, bOn);
+      rect(oBarBg, [cx - 340, cy + 40, 680 * eOut(p(t, 19.6, 19.85)), 10]); rect(oBar, [cx - 340, cy + 40, 680, 10]);
+      xf(oBar, `scaleX(${pc / 100})`);
+      // En camino: ruta + camioneta
+      rect(oL[2], [cx - 420, cy - 150, 500, 90]); rise(oL[2], t, 20.55, 21.45);
+      const rOn = t >= 20.6 && t < 21.5;
+      vis(oRoute, rOn); vis(van, rOn);
+      oRoute.style.left = px(cx - 400); oRoute.style.top = px(cy - 20);
+      oRoute.querySelector('#rt').style.strokeDashoffset = 1 - eIO(p(t, 20.6, 20.9));
+      const vk = eIO(p(t, 20.75, 21.25)), path = oRoute.querySelector('#rt'), L = path.getTotalLength(), pt = path.getPointAtLength(L * vk), pt2 = path.getPointAtLength(Math.min(L, L * vk + 4));
+      const ang = Math.atan2(pt2.y - pt.y, pt2.x - pt.x) * 180 / Math.PI;
+      van.style.left = px(cx - 400 + pt.x - 48); van.style.top = px(cy - 20 + pt.y - 50);
+      xf(van, `rotate(${ang}deg) scale(${spring(t - 20.65, 16, .6) * (1 - eIn(p(t, 21.35, 21.5)))})`);
+      // Entregado ✓ (círculo)
+      if (t >= 21.6) {
+        vis(oCheck, true); rect(oCheck, [cx - 70, cy - 70, 140, 140]); oCheck.style.transform = 'scale(1)';
+        oCheck.firstChild.style.strokeDashoffset = 1 - eOut(p(t, 21.62, 21.85));
+        rect(delivered, [cx - 300, cy + 170, 600, 80]); rise(delivered, t, 21.7);
+      }
+    }
+  }
+
+  // ---- 5 · pared ----
+  const onWall = t >= 22.5 && t < 24.85;
+  vis(wallSec, onWall);
+  if (onWall) {
+    LEAVES.forEach(([x, y, w, h, r], i) => {
+      const sw = Math.sin(t * 1.3 + i * .9) * 14, sw2 = Math.cos(t * 1.1 + i * 1.7) * 6;
+      rect(leafEls[i], [x + sw, y + sw2, w, h]); xf(leafEls[i], `rotate(${r + Math.sin(t * 1.5 + i) * 6}deg)`);
+    });
+    xf(stem, `rotate(${28 + Math.sin(t * 1.2) * 2}deg)`);
+    const inner = [FR[0] + MOLD, FR[1] + MOLD, FR[2] - 2 * MOLD, FR[3] - 2 * MOLD], ph = [inner[0] + MAT, inner[1] + MAT, inner[2] - 2 * MAT, inner[3] - 2 * MAT];
+    rect(wMat, inner); rect(wPhoto, ph);
+    paint(wPhoto, [cover('n14', PRINT_CROP, [0, 0, ph[2], ph[3]])], shift(0, 0));
+    const ik = t < 24.0 ? spring(t - 23.5, 16, .9) : 1 - eIO(p(t, 24.0, 24.28));
+    wIris.set(true, ph[0] + ph[2] / 2, ph[1] + ph[3] / 2, Math.hypot(ph[2], ph[3]) / 2 + 4, t < 23.5 ? 0 : ik, ph);
+  }
+  // sombra del marco en la pared
+  vis(frameShadow, onWall && t >= 23.0);
+  if (onWall) { rect(frameShadow, FR); frameShadow.style.boxShadow = `-26px 34px 50px rgba(40,30,20,${.3 * spring(t - 23.0, 12, .9)})`; }
+
+  // ---- capa negra única (22.0 → 27) ----
+  const onBlk = t >= 22.0;
+  vis(blk, onBlk);
+  if (onBlk) {
+    const FULL = [-300, -300, 2040, 2040];
+    let r, bw;
+    if (t < 22.3) { const k = eIn(p(t, 22.0, 22.3)); const rr = lerp(150, 1180, k); r = [720 - rr, 720 - rr, 2 * rr, 2 * rr, rr]; bw = rr; }
+    else if (t < 24.5) { const k = spring(t - 23.0, 11, .86); r = [...lerpCrop(FULL, FR, k), lerp(0, 3, k)]; bw = lerp(1020, MOLD, k); }
+    else if (t < 25.0) { const k = eIn(p(t, 24.5, 24.8)); r = [...lerpCrop(FR, FULL, k), lerp(3, 0, k)]; bw = lerp(MOLD, 1020, k); }
+    else { r = sp(t, [[0, [...FULL, 0]], [25.0, [...PILL, 75], 11, .82], [25.5, [...WM.dot, 8], 12, .85]]); bw = 2000; }
+    rect(blk, r.slice(0, 4), r[4]);
+    blk.style.borderWidth = px(Math.max(0, Math.min(bw, r[2] / 2, r[3] / 2)));
+  }
+
+  // ---- cursor ----
+  const c = cursorAt(t);
+  rect(cur, [c.x - 2, c.y - 2, 40, 56]); xf(cur, `scale(${c.s})`);
+  let rp = 0, rpc = null;
+  CLICKS.forEach(k => { if (t >= k && t < k + .4) { rp = p(t, k, k + .4); rpc = k; } });
+  vis(ripple, rpc != null);
+  if (rpc != null) { const rr = 10 + 46 * eOut(rp); rect(ripple, [c.x - rr, c.y - rr, 2 * rr, 2 * rr], rr); ripple.style.borderWidth = px(4 * (1 - rp)); }
+  const holdRing = t >= 14.1 && t < 14.5;
+  vis(ring, holdRing);
+  if (holdRing) { ring.style.left = px(c.x - 55); ring.style.top = px(c.y - 55); ring.firstChild.style.strokeDashoffset = 1 - eIO(p(t, 14.1, 14.45)); }
+
+  // espera a que carguen los mapas de desplazamiento nuevos antes de capturar
+  if (PENDING.length) await Promise.all(PENDING.map(u => { const i = new Image(); i.src = u; return i.decode().catch(() => {}); }));
+  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+}
+
+// =====================================================================
+// arranque
+// =====================================================================
+const isRender = new URLSearchParams(location.search).has('render');
+window.DURATION = DUR; window.seek = seek;
+window.READY = (async () => {
+  await Promise.all([document.fonts.load(`800 ${F}px Archivo`), document.fonts.load('600 20px Geist'), document.fonts.load('700 300px Geist')]);
+  await Promise.all(Object.values(IM).map(([src]) => { const i = new Image(); i.src = src; return i.decode(); }));
+  measureWord();
+  glyphs = [...WORD].map(ch => new GlassGlyph(gooWord, ch, GF, { blur: 9, scale: 36, tint: 'rgba(255,255,255,.2)' }));
+  glyphs.forEach(g => { gooWord.insertBefore(g.shadow, tb.el); gooWord.insertBefore(g.el, tb.el); });
+  digits = [...DIG].map(ch => new GlassGlyph(lockSec, ch, DF, { blur: 8, scale: 30, tint: 'rgba(255,255,255,.2)' }));
+  digits.forEach(d => { lockSec.insertBefore(d.shadow, dateM); lockSec.insertBefore(d.el, dateM); });
+  await seek(0);
+})();
+function fit() { const k = isRender ? 1 : Math.min(innerWidth / 1440, innerHeight / 1440); $('stage').style.transform = `scale(${k})`; }
+addEventListener('resize', fit); fit();
+if (!isRender) window.READY.then(() => {
+  const t0 = performance.now(); let busy = false;
+  const loop = async now => { if (!busy) { busy = true; await seek(((now - t0) / 1000) % DUR); busy = false; } requestAnimationFrame(loop); };
+  requestAnimationFrame(loop);
+});
+</script>
+</body>
+</html>
