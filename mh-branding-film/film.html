@@ -285,9 +285,12 @@ const CURSOR = `<svg width="40" height="56" viewBox="-2 -2 24 34"><path d="M0 0 
 const INK = '#0B0B0B';
 
 // ---------- 1 · wordmark ----------
-const WORD = 'viste', F = 300, YB = 720 + .27 * F;   // línea base
+const WORD = 'viste', F = 300, YB = 690;   // línea base (deja espacio al logo de MH Branding debajo)
 const wmLayer = div(world, 'a', { width: '1440px', height: '1440px' });
 const WM = { letters: [], adv125: [], adv62: [] };
+// logo de MH Branding bajo el wordmark: baja por su línea de máscara al comprimirse y vuelve a subir con las letras
+const LOGO = [550, 738, 340, 264];
+const wmLogo = mask(wmLayer, LOGO[0], LOGO[1], LOGO[2], LOGO[3] + 4, `<img src="assets/img/logo-dark.png" style="display:block;width:${LOGO[2]}px;height:${LOGO[3]}px">`);
 function measureWord() {
   const probe = div(document.body, 'a', { visibility: 'hidden' });
   const meas = (ch, wd) => { const s = document.createElement('span'); s.textContent = ch; Object.assign(s.style, { fontFamily: 'Archivo', fontSize: px(F), fontVariationSettings: `'wdth' ${wd}, 'wght' 800`, whiteSpace: 'pre', display: 'inline-block' }); probe.appendChild(s); return s.getBoundingClientRect().width; };
@@ -381,7 +384,7 @@ const chrome = div(mac, 'a', { width: '760px', height: '92px', background: '#ECE
 ['#FF5F57', '#FEBC2E', '#28C840'].forEach((c, i) => div(chrome, 'a', { left: px(22 + i * 24), top: '22px', width: '13px', height: '13px', borderRadius: '50%', background: c }));
 div(chrome, 'a', { left: '110px', top: '10px', width: '250px', height: '36px', borderRadius: '9px', background: '#FBFAF7' });
 const tabA = mask(chrome, 126, 10, 230, 36, 'Nueva pestaña', { fontSize: '15px', fontWeight: 600, lineHeight: '36px', color: '#333' });
-const tabB = mask(chrome, 126, 10, 230, 36, '<b style="font-family:Archivo;font-variation-settings:\'wdth\' 125,\'wght\' 800">viste.</b> <span style="color:#777;font-weight:500">Merch</span>', { fontSize: '15px', fontWeight: 600, lineHeight: '36px', color: '#111' });
+const tabB = mask(chrome, 126, 10, 230, 36, '<b>MH Branding</b> <span style="color:#777;font-weight:500">· Merch</span>', { fontSize: '15px', fontWeight: 600, lineHeight: '36px', color: '#111' });
 div(chrome, 'a', { left: '372px', top: '16px', width: '24px', height: '24px', color: '#777' }, svgI(ICON.plus, 24, 2));
 div(chrome, 'a', { left: '22px', top: '58px', width: '22px', height: '22px', color: '#999' }, svgI(ICON.back, 22, 2));
 div(chrome, 'a', { left: '50px', top: '58px', width: '22px', height: '22px', color: '#bbb' }, svgI(ICON.fwd, 22, 2));
@@ -397,7 +400,8 @@ div(newTab, 'a', { left: '48px', top: '60px', fontSize: '22px', fontWeight: 650 
 });
 const page = div(content, 'a', { width: '760px', height: '1400px' });
 const pageScroll = div(page, 'a', { width: '760px', height: '1400px' });
-const navWM = div(page, 'a', { left: '28px', top: '22px', fontFamily: 'Archivo', fontVariationSettings: "'wdth' 125, 'wght' 800", fontSize: '30px', lineHeight: '40px' }, 'viste.');
+const navWM = div(page, 'a', { left: '24px', top: '12px', height: '56px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '19px', fontWeight: 700, letterSpacing: '-.01em', whiteSpace: 'nowrap' },
+  '<img src="assets/img/logo-dark.png" style="height:56px;width:72px;object-fit:contain">MH Branding');
 div(page, 'a', { left: '250px', top: '22px', display: 'flex', gap: '26px', fontSize: '15px', fontWeight: 500, color: '#555', lineHeight: '40px' }, '<span>Playeras</span><span>Gorras</span><span>Polos</span><span>Uniformes</span>');
 const navBtn = div(page, 'a', { left: '620px', top: '16px', width: '116px', height: '40px', borderRadius: '20px', background: INK, color: '#fff', fontSize: '15px', fontWeight: 600, lineHeight: '40px', textAlign: 'center' }, 'Pedir merch');
 const hl = div(pageScroll, 'a', { left: '28px', top: '96px', fontSize: '44px', fontWeight: 650, letterSpacing: '-.035em', lineHeight: '48px', whiteSpace: 'nowrap' }, 'Tu marca también se viste.');
@@ -547,6 +551,9 @@ async function seek(t) {
   const fOut = 1 - eIO(p(t, .5, 1.0)), fIn0 = spring(t - 25.95, 14, .55), fIn = t > 26.6 && Math.abs(1 - fIn0) < .002 ? 1 : fIn0;
   const f = t < 13 ? fOut : fIn;
   drawWord(f, t < 1.05 || t > 25.9);
+  const lgOut = eIn(p(t, .45, .78)), lgIn0 = spring(t - 26.0, 16, .82), lgIn = t > 26.6 && Math.abs(1 - lgIn0) < .002 ? 1 : lgIn0;
+  const lgY = t < 13 ? lgOut : 1 - lgIn;
+  vis(wmLogo, t < .78 || t >= 26.0); xf(wmLogo.firstChild, `translateY(${112 * lgY}%)`);
 
   // ---- 1 · forma negra: punto → píldora → círculo → recuadro A ----
   const onHero = t < 6.0;
