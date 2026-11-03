@@ -830,7 +830,9 @@ async function seek(t) {
     else if (t < 25.0) { const k = eIn(p(t, 24.5, 24.8)); r = [...lerpCrop(FR, FULL, k), lerp(3, 0, k)]; bw = lerp(MOLD, 1020, k); }
     else { r = sp(t, [[0, [...FULL, 0]], [25.0, [...PILL, 75], 11, .82], [25.5, [...WM.dot, 8], 12, .85]]); bw = 2000; }
     rect(blk, r.slice(0, 4), r[4]);
-    blk.style.borderWidth = px(Math.max(0, Math.min(bw, r[2] / 2, r[3] / 2)));
+    const half = Math.min(r[2], r[3]) / 2, bwc = Math.max(0, Math.min(bw, half));
+    blk.style.borderWidth = px(bwc);
+    blk.style.background = bwc >= half - .01 ? INK : 'transparent';   // sólido: sin franja vacía en el centro
   }
 
   // ---- cursor ----
