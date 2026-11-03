@@ -442,16 +442,19 @@ const van = div(world, 'a', { width: '96px', height: '60px' }, `<svg viewBox="0 
 const delivered = mask(world, 0, 0, 600, 80, 'Entregado', { fontSize: '56px', fontWeight: 650, letterSpacing: '-.03em', lineHeight: '80px', textAlign: 'center' });
 
 // ---------- 5 · pared ----------
-const wallSec = div(world, 'a', { width: '1440px', height: '1440px', overflow: 'hidden', background: 'linear-gradient(160deg,#EEE7DB 0%,#E6DDCF 55%,#DCD2C2 100%)' });
-const sunPatch = div(wallSec, 'a', { left: '620px', top: '-260px', width: '1200px', height: '1000px', background: 'radial-gradient(ellipse at 40% 50%,rgba(255,246,226,.8),rgba(255,246,226,0) 62%)' });
-const leafWrap = div(wallSec, 'a', { width: '1440px', height: '1440px', filter: 'blur(8px)', opacity: .5 });
-const LEAVES = [[1160, 60, 300, 80, 35], [1040, 220, 330, 88, 60], [1250, 320, 260, 70, 15], [960, 400, 240, 64, 75], [1180, 500, 290, 76, 40], [1330, 140, 220, 60, 100], [1080, 600, 220, 58, 55], [1300, 690, 200, 54, 20]];
-const leafEls = LEAVES.map(() => div(leafWrap, 'a', { borderRadius: '50%', background: 'rgba(70,58,44,.6)' }));
-const stem = div(wallSec, 'a', { left: '880px', top: '-60px', width: '12px', height: '860px', background: 'rgba(70,58,44,.38)', transformOrigin: 'top', filter: 'blur(7px)' });
+// pared real (clip de Pexels re-codificado all-intra, cargado como blob URL)
+const wallSec = div(world, 'a', { width: '1440px', height: '1440px', overflow: 'hidden', background: '#D9D2C4' });
+const wallVid = document.createElement('video'); wallVid.muted = true; wallVid.playsInline = true; wallVid.preload = 'auto';
+const wallCv = document.createElement('canvas'); wallCv.width = wallCv.height = 1440; wallCv.className = 'a'; wallSec.appendChild(wallCv);
+const WALL_T0 = .2;   // segundo del clip que corresponde a t = 22.5
 const FR = [460, 290, 520, 700], MOLD = 22, MAT = 64;
 const wMat = div(wallSec, 'a', { background: '#F5F2EB', boxShadow: 'inset 4px 5px 9px rgba(0,0,0,.2)' });
 const wPhoto = div(wallSec, 'a', { overflow: 'hidden' });
 const wIris = new Iris(wallSec);
+// las sombras de la palmera caen también sobre el cuadro (multiplicar)
+const shadeCv = document.createElement('canvas'); shadeCv.width = shadeCv.height = 1440; shadeCv.className = 'a';
+Object.assign(shadeCv.style, { mixBlendMode: 'multiply', filter: 'grayscale(1) brightness(1.2) contrast(1.15)', opacity: .85 });
+wallSec.appendChild(shadeCv);
 const frameShadow = div(world, 'a', {});
 
 // ---------- capa negra única: inunda, enmarca y vuelve a ser el punto ----------
@@ -802,11 +805,10 @@ async function seek(t) {
   const onWall = t >= 22.5 && t < 24.85;
   vis(wallSec, onWall);
   if (onWall) {
-    LEAVES.forEach(([x, y, w, h, r], i) => {
-      const sw = Math.sin(t * 1.3 + i * .9) * 14, sw2 = Math.cos(t * 1.1 + i * 1.7) * 6;
-      rect(leafEls[i], [x + sw, y + sw2, w, h]); xf(leafEls[i], `rotate(${r + Math.sin(t * 1.5 + i) * 6}deg)`);
-    });
-    xf(stem, `rotate(${28 + Math.sin(t * 1.2) * 2}deg)`);
+    const vt = clamp(WALL_T0 + (t - 22.5), 0, wallVid.duration - .04);
+    if (Math.abs(wallVid.currentTime - vt) > 1e-4) { const sk = new Promise(r => wallVid.addEventListener('seeked', r, { once: true })); wallVid.currentTime = vt; await sk; }
+    wallCv.getContext('2d').drawImage(wallVid, 0, 0, 1440, 1440);
+    const sc = shadeCv.getContext('2d'); sc.clearRect(0, 0, 1440, 1440); sc.save(); sc.beginPath(); sc.rect(FR[0] + MOLD, FR[1] + MOLD, FR[2] - 2 * MOLD, FR[3] - 2 * MOLD); sc.clip(); sc.drawImage(wallVid, 0, 0, 1440, 1440); sc.restore();
     const inner = [FR[0] + MOLD, FR[1] + MOLD, FR[2] - 2 * MOLD, FR[3] - 2 * MOLD], ph = [inner[0] + MAT, inner[1] + MAT, inner[2] - 2 * MAT, inner[3] - 2 * MAT];
     rect(wMat, inner); rect(wPhoto, ph);
     paint(wPhoto, [cover('n14', PRINT_CROP, [0, 0, ph[2], ph[3]])], shift(0, 0));
@@ -855,6 +857,9 @@ window.DURATION = DUR; window.seek = seek;
 window.READY = (async () => {
   await Promise.all([document.fonts.load(`800 ${F}px Archivo`), document.fonts.load('600 20px Geist'), document.fonts.load('700 300px Geist')]);
   await Promise.all(Object.values(IM).map(([src]) => { const i = new Image(); i.src = src; return i.decode(); }));
+  // clip de la pared: blob URL (con servidor) o ruta directa
+  try { const b = await (await fetch('assets/footage/wall-intra.mp4')).blob(); wallVid.src = URL.createObjectURL(b); } catch (e) { wallVid.src = 'assets/footage/wall-intra.mp4'; }
+  await new Promise(r => { if (wallVid.readyState >= 2) r(); else wallVid.addEventListener('loadeddata', r, { once: true }); });
   measureWord();
   glyphs = [...WORD].map(ch => new GlassGlyph(gooWord, ch, GF, { blur: 9, scale: 36, tint: 'rgba(255,255,255,.2)' }));
   glyphs.forEach(g => { gooWord.insertBefore(g.shadow, tb.el); gooWord.insertBefore(g.el, tb.el); });

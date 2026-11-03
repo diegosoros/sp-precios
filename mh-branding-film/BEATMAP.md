@@ -87,7 +87,12 @@ Beat *n* empieza en (n − 1) × 0.5 s. La canción arranca en un tiempo fuerte,
 | **53** | **0:26.0** | **REGRESA EL BEAT**: las letras salen del punto con resorte |
 | 54 | 0:26.5 | Aterrizan: **viste.** = primer cuadro (loop) |
 
-## Música
+## Música y efectos
 
-- Drop en b13 (0:06.0), breakdown en b45 (0:22.0), regreso del beat en b53 (0:26.0).
-- Si la canción tiene otra estructura, se recorta en límites de compás (2 s) para que caiga así.
+- Canción: **House 02** (Mixkit), 123.01 BPM, estirada a 120 BPM exactos (−2.5 %).
+  - 0:00–0:22 → desde un tiempo fuerte 3 compases antes del drop: el primer bombo del drop cae en **b13 (0:06)**.
+  - 0:22–0:26 → la sección sin graves del outro: la pared queda en el breakdown.
+  - 0:26–0:27 → otra vez el primer bombo del drop: **regresa el beat** con el wordmark (b53).
+- Efectos (Mixkit), cada uno colocado por su pico medido: select click, hard pop click, fast air woosh,
+  cinematic wind swoosh, futuristic slide, hard and quick punch, toy drums and bell ding, slow typing.
+- Mezcla normalizada a **−14 LUFS**, pico real ≤ −1 dBFS (`build-audio.py`).
