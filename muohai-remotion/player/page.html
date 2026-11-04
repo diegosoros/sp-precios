@@ -1,0 +1,91 @@
+<title>MÜOHAI Reel</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Motion graphics vertical 9:16 para MÜOHAI, hecho con Remotion.">
+<style>
+@font-face{font-family:"MH Display";src:url(data:font/woff2;base64,{{BRICOLAGE}}) format("woff2");font-weight:200 800;font-stretch:75% 100%;font-style:normal;font-display:block}
+@font-face{font-family:"MH Serif";src:url(data:font/woff2;base64,{{SERIF_ITALIC}}) format("woff2");font-weight:400;font-style:italic;font-display:block}
+@font-face{font-family:"MH Mono";src:url(data:font/woff2;base64,{{MONO}}) format("woff2");font-weight:500;font-style:normal;font-display:block}
+
+/* Layout: sala de proyección — el reel vertical manda a la izquierda; la ficha y las escenas van en una columna a la derecha; en teléfono se apila */
+:root{
+  --bg:#ECEFF5;
+  --ink:#0B1B33;
+  --muted:#525E75;
+  --line:#D2D8E3;
+  --accent:#C40F68;
+  --stage:#0B2A5B;
+  --f-display:"MH Display","Arial Narrow",system-ui,sans-serif;
+  --f-serif:"MH Serif",Georgia,"Times New Roman",serif;
+  --f-mono:"MH Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){--bg:#070F1C;--ink:#EDF1F7;--muted:#97A3B9;--line:#23324B;--accent:#FF5AA2;--stage:#0B2A5B;color-scheme:dark}
+}
+:root[data-theme="dark"]{--bg:#070F1C;--ink:#EDF1F7;--muted:#97A3B9;--line:#23324B;--accent:#FF5AA2;--stage:#0B2A5B;color-scheme:dark}
+
+body{background:var(--bg);color:var(--ink);font-family:var(--f-display);font-weight:400;font-size:16px;line-height:1.5}
+.wrap{max-width:1080px;margin:0 auto;padding-block:clamp(20px,4vw,48px);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;grid-template-columns:min(460px,calc(86vh * 9 / 16)) minmax(0,1fr);gap:clamp(24px,5vw,64px);align-items:start}
+
+.player{width:100%;min-width:0}
+.frame{position:relative;width:100%;max-width:100%;aspect-ratio:9/16;border-radius:20px;overflow:hidden;background:var(--stage);box-shadow:0 28px 60px -32px rgba(7,20,45,.55)}
+#reel{position:absolute;inset:0}
+
+.info{min-width:0;display:grid;gap:20px;padding-top:8px}
+.eyebrow{margin:0;font:500 12px/1.4 var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+h1{margin:0;font-family:var(--f-display);font-weight:800;font-stretch:75%;font-size:clamp(56px,9vw,104px);line-height:.88;letter-spacing:.01em;text-wrap:balance}
+.lede{margin:0;max-width:34ch;font-family:var(--f-serif);font-style:italic;font-size:clamp(22px,2.6vw,28px);line-height:1.25}
+.label{margin:0;font:500 12px/1 var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+
+.scenes{list-style:none;margin:0;padding:0;display:grid;border-top:1px solid var(--line)}
+.scenes li{border-bottom:1px solid var(--line)}
+.scenes button{width:100%;display:grid;grid-template-columns:6ch minmax(0,1fr);gap:14px;align-items:baseline;padding:11px 4px;background:none;border:0;color:var(--ink);font:400 16px/1.35 var(--f-display);text-align:left;cursor:pointer}
+.scenes button:hover .sn{color:var(--accent)}
+.scenes button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.scenes .ts{font:500 12px/1 var(--f-mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.scenes button[aria-current="true"] .sn{color:var(--accent);font-weight:700}
+.scenes button[aria-current="true"] .ts{color:var(--accent)}
+
+.specs{margin:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 20px}
+.specs div{min-width:0}
+.specs dt{font:500 11px/1.2 var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.specs dd{margin:4px 0 0;font-size:16px;font-weight:600}
+.note{margin:0;max-width:60ch;font-size:14px;color:var(--muted)}
+
+@media (max-width:760px){
+  .wrap{grid-template-columns:minmax(0,1fr)}
+  .player{width:min(100%,420px);justify-self:center}
+  .info{padding-top:0}
+}
+</style>
+
+<main class="wrap">
+  <section class="player" aria-label="Reproductor del reel">
+    <div class="frame"><div id="reel"></div></div>
+  </section>
+
+  <aside class="info">
+    <p class="eyebrow">Reel vertical · 9:16 · Remotion</p>
+    <h1>MÜOHAI</h1>
+    <p class="lede">Trajes de baño mexicanos de edición limitada, contados en seis escenas para Reels, TikTok e Historias.</p>
+
+    <h2 class="label">Escenas</h2>
+    <ol class="scenes">
+      <li><button type="button" data-scene="0"><span class="ts">0.0 s</span><span class="sn">Amanecer y logotipo</span></button></li>
+      <li><button type="button" data-scene="1"><span class="ts">3.0 s</span><span class="sn">Alma hawaiana, sensualidad mexicana</span></button></li>
+      <li><button type="button" data-scene="2"><span class="ts">5.7 s</span><span class="sn">Edición limitada de 50 piezas</span></button></li>
+      <li><button type="button" data-scene="3"><span class="ts">9.1 s</span><span class="sn">Reversible, sin costuras, hecho a mano</span></button></li>
+      <li><button type="button" data-scene="4"><span class="ts">12.2 s</span><span class="sn">La colección, de Kai a Kaili</span></button></li>
+      <li><button type="button" data-scene="5"><span class="ts">14.5 s</span><span class="sn">Cierre con muohai.com.mx</span></button></li>
+    </ol>
+
+    <dl class="specs">
+      <div><dt>Tamaño</dt><dd>1080 × 1920 px</dd></div>
+      <div><dt>Cuadros</dt><dd>30 fps · 525 en total</dd></div>
+      <div><dt>Duración</dt><dd>17.5 s</dd></div>
+      <div><dt>Audio</dt><dd>Sin música</dd></div>
+    </dl>
+    <p class="note">Esta página reproduce la misma composición de Remotion que genera el MP4. Textos, nombres de los sets y datos (50 piezas por set, hecho a mano en Guadalajara, cortes tanga, brasileño y cheeky) tomados de muohai.com.mx. La paleta y la tipografía son una propuesta; el logotipo es una versión tipográfica que se puede cambiar por el oficial.</p>
+  </aside>
+</main>
+
+<script>{{SCRIPT}}</script>
